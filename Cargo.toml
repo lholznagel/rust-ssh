@@ -1,0 +1,8 @@
+[package]
+name = "ssh_transport"
+version = "0.1.0"
+authors = ["lholznagel <contact@lholznagel.info>"]
+edition = "2018"
+
+[dev-dependencies]
+failure = "0.1.2"
