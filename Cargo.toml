@@ -4,5 +4,6 @@ version = "0.1.0"
 authors = ["lholznagel <contact@lholznagel.info>"]
 edition = "2018"
 
-[dev-dependencies]
+[dependencies]
+byteorder = "1.2.6"
 failure = "0.1.2"

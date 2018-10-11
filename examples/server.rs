@@ -1,10 +1,3 @@
-#![feature(alloc_system)]
-extern crate alloc_system;
-
-use alloc_system::System;
-#[global_allocator]
-static A: System = System;
-
 use failure::Error;
 use std::net::TcpListener;
 
