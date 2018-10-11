@@ -1,0 +1,20 @@
+language: rust
+
+notifications:
+  email: false
+
+os:
+  - linux
+  - windows
+
+cache:
+  directories:
+    - $HOME/.cargo
+
+rust:
+  - stable
+  - beta
+  - nightly
+
+script:
+  - cargo test
