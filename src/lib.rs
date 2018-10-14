@@ -74,7 +74,7 @@ impl AlgorithmNegotiation {
     // TODO optimize
     pub fn build() -> Vec<u8> {
         let kex = String::from("curve25519-sha256");
-        let server_host_key = String::from("ecdsa-sha2-nistp256-cert-v01@openssh.com");
+        let server_host_key = String::from("ecdsa-sha2-nistp256");
         let encryption_algorithm = String::from("chacha20-poly1305@openssh.com");
         let mac_algorithm = String::from("hmac-sha2-256");
         let compression = String::from("none");
@@ -122,6 +122,43 @@ impl AlgorithmNegotiation {
             .write_vec(payload)
             .write_vec(vec![0; padding as usize])
             .build()
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+struct DiffieHellmanKeyExchange {
+    pub packet_length: u32,
+    pub padding_length: u8,
+    pub ssh_msg_kexdh: u8,
+    pub e: String,
+}
+
+impl DiffieHellmanKeyExchange {
+    pub fn parse(data: &[u8]) -> Result<Self, Error> {
+        let mut parser = Parser::new(data);
+
+        Ok(Self {
+            packet_length: parser.read_u32()?,
+            padding_length: parser.read_u8()?,
+            ssh_msg_kexdh: parser.read_u8()?,
+            e: parser.read_list()?,
+        })
+    }
+
+    pub fn build() -> Vec<u8> {
+        let host_key = String::from("ecdsa-sha2-nistp256");
+        let elliptic_curve = String::from("nistp256");
+
+        let payload = Builder::new()
+            // ssh_msg_kexdh
+            .write_u8(31)
+            .write_u32(host_key.len() as u32)
+            .write_vec(host_key.as_bytes().to_vec())
+            .write_u32(elliptic_curve.len() as u32)
+            .write_vec(elliptic_curve.as_bytes().to_vec())
+            .build();
+
+        Vec::new()
     }
 }
 
