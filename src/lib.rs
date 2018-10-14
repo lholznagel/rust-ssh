@@ -79,7 +79,7 @@ impl AlgorithmNegotiation {
         let mac_algorithm = String::from("hmac-sha2-256");
         let compression = String::from("none");
 
-        let key_exchange = Builder::new()
+        let payload = Builder::new()
             .write_u8(20)
             .write_vec(generate_cookie().to_vec())
             .write_u32(kex.len() as u32)
@@ -108,16 +108,18 @@ impl AlgorithmNegotiation {
             .write_u32(0)
             .build();
 
-        let mut padding = (key_exchange.len() % 8) as u8;
+        // 4 -> packet length, 1 -> padding length
+        let mut padding = ((4 + 1 + payload.len()) % 8) as u8;
         if padding < 4 {
-            padding = padding + 8;
+            padding = 8 - padding;
         }
 
-        let builder = Builder::with_capacity(key_exchange.len());
+        let builder = Builder::with_capacity(payload.len());
         builder
-            .write_u32(key_exchange.len() as u32 + 1)
+            // 1 -> padding length
+            .write_u32(1 + payload.len() as u32 + padding as u32)
             .write_u8(padding)
-            .write_vec(key_exchange)
+            .write_vec(payload)
             .write_vec(vec![0; padding as usize])
             .build()
     }
@@ -134,7 +136,7 @@ impl SSHTransport {
 
     pub fn accept(mut self) {
         let mut protocol_exchange = false;
-        let mut key_exchange = false;
+        let mut payload = false;
 
         loop {
             let mut buffer = [0; 2048];
@@ -153,13 +155,13 @@ impl SSHTransport {
                 };
             }
 
-            if !key_exchange {
+            if !payload {
                 match AlgorithmNegotiation::parse(&buffer) {
                     Ok(_) => {
                         self.tcp_listener
                             .write(&AlgorithmNegotiation::build())
                             .unwrap();
-                        key_exchange = true;
+                        payload = true;
                         continue;
                     }
                     _ => println!("Not AlgorithmNegotiation"),
