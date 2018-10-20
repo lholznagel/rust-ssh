@@ -4,9 +4,10 @@ mod parser;
 use self::builder::Builder;
 use self::parser::Parser;
 use failure::{format_err, Error};
+use num_bigint::{BigInt, Sign};
+use std::fs::File;
 use std::io::{Read, Write};
 use std::net::TcpStream;
-use std::fs::File;
 
 #[derive(Copy, Clone, Debug)]
 struct ProtocolVersionExchange;
@@ -131,39 +132,62 @@ struct DiffieHellmanKeyExchange {
     pub packet_length: u32,
     pub padding_length: u8,
     pub ssh_msg_kexdh: u8,
-    pub e: String,
+    pub e: BigInt,
 }
 
 impl DiffieHellmanKeyExchange {
     pub fn parse(data: &[u8]) -> Result<Self, Error> {
         let mut parser = Parser::new(data);
+        let packet_length = parser.read_u32()?;
+        let padding_length = parser.read_u8()?;
+        let ssh_msg_kexdh = parser.read_u8()?;
+        let length_e = parser.read_u32()?;
+        let e = parser.read_length(length_e as usize)?;
+        let e = BigInt::from_bytes_be(Sign::NoSign, &e);
 
         Ok(Self {
-            packet_length: parser.read_u32()?,
-            padding_length: parser.read_u8()?,
-            ssh_msg_kexdh: parser.read_u8()?,
-            e: parser.read_list()?,
+            packet_length,
+            padding_length,
+            ssh_msg_kexdh,
+            e,
         })
     }
 
     pub fn build() -> Vec<u8> {
         let mut host_key = String::new();
-        let mut file = File::open("./resources/id_ed25519").unwrap();
+        let mut file = File::open("./resources/id_ed25519.pub").unwrap();
         file.read_to_string(&mut host_key).unwrap();
 
-        let host_key_type = String::from("ssh-ed25519");
-        let elliptic_curve = String::from("ed25519");
+        // TODO parse key
+        let host_key = host_key.replace("ssh-ed25519 ", "").replace("\n", "");
+        let host_key = base64::decode(&host_key).unwrap();
+        let host_key = host_key[(4 + 11)..host_key.len()].to_vec();
 
         let payload = Builder::new()
             // ssh_msg_kexdh
             .write_u8(31)
-            .write_u32(host_key_type.len() as u32)
-            .write_vec(host_key_type.as_bytes().to_vec())
-            .write_u32(elliptic_curve.len() as u32)
-            .write_vec(elliptic_curve.as_bytes().to_vec())
+            // length + algo + length + key
+            .write_u32(4 + 11 + 4 + 32)
+            .write_u32(11)
+            .write_vec(String::from("ssh-ed25519").as_bytes().to_vec())
+            .write_vec(host_key)
+            .write_u32(32)
+            .write_vec(vec![1; 32])
+            .write_u32(83)
+            .write_vec(vec![2; 83])
             .build();
 
-        Vec::new()
+        let mut padding = ((4 + 1 + payload.len()) % 8) as u8;
+        if padding < 4 {
+            padding = 8 - padding;
+        }
+
+        Builder::new()
+            .write_u32(1 + payload.len() as u32 + padding as u32)
+            .write_u8(padding)
+            .write_vec(payload)
+            .write_vec(vec![0; padding as usize])
+            .build()
     }
 }
 
@@ -179,6 +203,7 @@ impl SSHTransport {
     pub fn accept(mut self) {
         let mut protocol_exchange = false;
         let mut payload = false;
+        let mut diffie = false;
 
         loop {
             let mut buffer = [0; 2048];
@@ -195,9 +220,7 @@ impl SSHTransport {
                     }
                     _ => println!("Not ProtocolVersionExchange"),
                 };
-            }
-
-            if !payload {
+            } else if !payload {
                 match AlgorithmNegotiation::parse(&buffer) {
                     Ok(_) => {
                         self.tcp_listener
@@ -208,6 +231,19 @@ impl SSHTransport {
                     }
                     _ => println!("Not AlgorithmNegotiation"),
                 };
+            } else if !diffie {
+                match DiffieHellmanKeyExchange::parse(&buffer) {
+                    Ok(_) => {
+                        self.tcp_listener
+                            .write(&DiffieHellmanKeyExchange::build())
+                            .unwrap();
+                        diffie = true;
+                        continue;
+                    }
+                    _ => println!("Not DiffieHellmanKeyExchange"),
+                };
+            } else {
+                std::process::exit(0);
             }
         }
     }
