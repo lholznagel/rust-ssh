@@ -3,21 +3,39 @@ mod parser;
 
 use self::builder::Builder;
 use self::parser::Parser;
+use crypto::digest::Digest;
+use crypto::sha2::Sha256;
 use failure::{format_err, Error};
-use num_bigint::{BigInt, Sign};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 
-#[derive(Copy, Clone, Debug)]
-struct ProtocolVersionExchange;
+#[derive(Clone, Debug, Default)]
+struct DiffiHellman {
+    pub client_identifier: Vec<u8>,
+    pub server_identifier: Vec<u8>,
+    pub client_kex: Vec<u8>,
+    pub server_kex: Vec<u8>,
+}
+
+#[derive(Clone, Debug)]
+struct ProtocolVersionExchange {
+    identifier: Vec<u8>,
+}
 
 impl ProtocolVersionExchange {
     pub fn parse(data: &[u8; 2048]) -> Result<Self, Error> {
         // check the first three bytes for the String SSH
         // TODO: the first line does not have to be the SSH string
         if data[0] == 83 && data[1] == 83 && data[2] == 72 {
-            Ok(Self {})
+            Ok(Self {
+                identifier: data
+                    .to_vec()
+                    .iter()
+                    .filter(|x| **x != 0)
+                    .map(|x| *x)
+                    .collect::<Vec<u8>>(),
+            })
         } else {
             Err(format_err!(""))
         }
@@ -34,6 +52,7 @@ impl ProtocolVersionExchange {
 
 #[derive(Clone, Debug, Default)]
 struct AlgorithmNegotiation {
+    pub complete_data: Vec<u8>,
     pub packet_length: u32,
     pub padding_length: u8,
     pub ssh_msg_kexinit: u8,
@@ -55,6 +74,7 @@ impl AlgorithmNegotiation {
     pub fn parse(data: &[u8]) -> Result<Self, Error> {
         let mut parser = Parser::new(data);
         Ok(Self {
+            complete_data: data.to_vec().clone(),
             packet_length: parser.read_u32()?,
             padding_length: parser.read_u8()?,
             ssh_msg_kexinit: parser.read_u8()?,
@@ -132,28 +152,39 @@ struct DiffieHellmanKeyExchange {
     pub packet_length: u32,
     pub padding_length: u8,
     pub ssh_msg_kexdh: u8,
-    pub e: BigInt,
+    pub e: Vec<u8>,
+    pub diffie_hellman: DiffiHellman,
 }
 
 impl DiffieHellmanKeyExchange {
-    pub fn parse(data: &[u8]) -> Result<Self, Error> {
+    pub fn parse(data: &[u8], diffie_hellman: DiffiHellman) -> Result<Self, Error> {
         let mut parser = Parser::new(data);
         let packet_length = parser.read_u32()?;
         let padding_length = parser.read_u8()?;
         let ssh_msg_kexdh = parser.read_u8()?;
         let length_e = parser.read_u32()?;
         let e = parser.read_length(length_e as usize)?;
-        let e = BigInt::from_bytes_be(Sign::NoSign, &e);
 
         Ok(Self {
             packet_length,
             padding_length,
             ssh_msg_kexdh,
             e,
+            diffie_hellman,
         })
     }
 
-    pub fn build() -> Vec<u8> {
+    pub fn build(self) -> Vec<u8> {
+        let mut public = [0; 32];
+        for i in 0..32 {
+            public[i] = self.e[i];
+        }
+
+        let mut curve_rand = rand::OsRng::new().unwrap();
+        let curve_secret = x25519_dalek::generate_secret(&mut curve_rand);
+        let curve_public = x25519_dalek::generate_public(&curve_secret);
+        let dh = x25519_dalek::diffie_hellman(&curve_secret, &public);
+
         let mut host_key = String::new();
         let mut file = File::open("./resources/id_ed25519.pub").unwrap();
         file.read_to_string(&mut host_key).unwrap();
@@ -162,6 +193,19 @@ impl DiffieHellmanKeyExchange {
         let host_key = host_key.replace("ssh-ed25519 ", "").replace("\n", "");
         let host_key = base64::decode(&host_key).unwrap();
         let host_key = host_key[(4 + 11)..host_key.len()].to_vec();
+
+        let mut hasher = Sha256::new();
+        hasher.input(&self.diffie_hellman.client_identifier);
+        hasher.input(&self.diffie_hellman.server_identifier);
+        hasher.input(&self.diffie_hellman.client_kex);
+        hasher.input(&self.diffie_hellman.server_kex);
+        hasher.input(&host_key.clone());
+        hasher.input(&self.e);
+        hasher.input(&curve_public.to_bytes());
+        hasher.input(&dh);
+
+        let mut hash = vec![0; hasher.output_bits()];
+        hasher.result(&mut hash);
 
         let payload = Builder::new()
             // ssh_msg_kexdh
@@ -172,9 +216,9 @@ impl DiffieHellmanKeyExchange {
             .write_vec(String::from("ssh-ed25519").as_bytes().to_vec())
             .write_vec(host_key)
             .write_u32(32)
-            .write_vec(vec![1; 32])
-            .write_u32(83)
-            .write_vec(vec![2; 83])
+            .write_vec(curve_public.to_bytes().to_vec())
+            .write_u32(hash.len() as u32)
+            .write_vec(hash)
             .build();
 
         let mut padding = ((4 + 1 + payload.len()) % 8) as u8;
@@ -205,16 +249,23 @@ impl SSHTransport {
         let mut payload = false;
         let mut diffie = false;
 
+        let mut client_identifier = Vec::new();
+        let mut server_identifier = Vec::new();
+        let mut client_kex = Vec::new();
+        let mut server_kex = Vec::new();
+
         loop {
             let mut buffer = [0; 2048];
             self.tcp_listener.read(&mut buffer).unwrap();
 
             if !protocol_exchange {
                 match ProtocolVersionExchange::parse(&buffer) {
-                    Ok(_) => {
-                        self.tcp_listener
-                            .write(&ProtocolVersionExchange::build())
-                            .unwrap();
+                    Ok(x) => {
+                        client_identifier = x.identifier;
+
+                        let response = ProtocolVersionExchange::build();
+                        server_identifier = response.clone();
+                        self.tcp_listener.write(&response).unwrap();
                         protocol_exchange = true;
                         continue;
                     }
@@ -222,21 +273,29 @@ impl SSHTransport {
                 };
             } else if !payload {
                 match AlgorithmNegotiation::parse(&buffer) {
-                    Ok(_) => {
-                        self.tcp_listener
-                            .write(&AlgorithmNegotiation::build())
-                            .unwrap();
+                    Ok(x) => {
+                        let response = AlgorithmNegotiation::build();
+                        client_kex = x.complete_data;
+                        server_kex = response.clone();
+
+                        self.tcp_listener.write(&response).unwrap();
                         payload = true;
                         continue;
                     }
                     _ => println!("Not AlgorithmNegotiation"),
                 };
             } else if !diffie {
-                match DiffieHellmanKeyExchange::parse(&buffer) {
-                    Ok(_) => {
-                        self.tcp_listener
-                            .write(&DiffieHellmanKeyExchange::build())
-                            .unwrap();
+                match DiffieHellmanKeyExchange::parse(
+                    &buffer,
+                    DiffiHellman {
+                        client_identifier: client_identifier.clone(),
+                        server_identifier: server_identifier.clone(),
+                        client_kex: client_kex.clone(),
+                        server_kex: server_kex.clone(),
+                    },
+                ) {
+                    Ok(x) => {
+                        self.tcp_listener.write(&x.build()).unwrap();
                         diffie = true;
                         continue;
                     }

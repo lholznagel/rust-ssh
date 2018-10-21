@@ -8,7 +8,7 @@ Current WIP
 
 `cargo run --example server` - Starts the example server
 
-`ssh 0.0.0.0 -p 1337 -v` - Opens a ssh connection to the example server
+`ssh 0.0.0.0 -p 1337 -v -o "UserKnownHostsFile /dev/null"` - Opens a ssh connection to the example server
 
 ## Run the example using the makefile
 
