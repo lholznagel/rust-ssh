@@ -30,9 +30,9 @@ impl ProtocolVersionExchange {
             Ok(Self {
                 identifier: data
                     .to_vec()
-                    .iter()
-                    .filter(|x| **x != 0)
-                    .map(|x| *x)
+                    .into_iter()
+                    .filter(|x| *x != 0)
+                    .map(|x| x)
                     .collect::<Vec<u8>>(),
             })
         } else {
@@ -51,7 +51,6 @@ impl ProtocolVersionExchange {
 
 #[derive(Clone, Debug, Default)]
 struct AlgorithmNegotiation {
-    pub complete_data: Vec<u8>,
     pub packet_length: u32,
     pub padding_length: u8,
     pub ssh_msg_kexinit: u8,
@@ -67,13 +66,13 @@ struct AlgorithmNegotiation {
     pub languages_client_to_server: String,
     pub languages_server_to_client: String,
     pub first_kex_packet_follows: bool,
+    pub reserved: Vec<u8>,
 }
 
 impl AlgorithmNegotiation {
     pub fn parse(data: &[u8]) -> Result<Self, Error> {
         let mut parser = Parser::new(data);
         Ok(Self {
-            complete_data: data.to_vec().clone(),
             packet_length: parser.read_u32()?,
             padding_length: parser.read_u8()?,
             ssh_msg_kexinit: parser.read_u8()?,
@@ -89,6 +88,7 @@ impl AlgorithmNegotiation {
             languages_client_to_server: parser.read_list()?,
             languages_server_to_client: parser.read_list()?,
             first_kex_packet_follows: parser.read_u8()? == 1,
+            reserved: vec![0; 4],
         })
     }
 
@@ -142,6 +142,41 @@ impl AlgorithmNegotiation {
             .write_u8(padding)
             .write_vec(payload)
             .write_vec(vec![0; padding as usize])
+            .build()
+    }
+
+    pub fn build_payload(self) -> Vec<u8> {
+        Builder::new()
+            .write_u8(self.ssh_msg_kexinit)
+            .write_vec(self.cookie.to_vec())
+            .write_vec(self.kex_algorithms.as_bytes().to_vec())
+            .write_vec(self.server_host_key_algorithms.as_bytes().to_vec())
+            .write_vec(
+                self.encryption_algorithms_client_to_server
+                    .as_bytes()
+                    .to_vec(),
+            )
+            .write_vec(
+                self.encryption_algorithms_server_to_client
+                    .as_bytes()
+                    .to_vec(),
+            )
+            .write_vec(self.mac_algorithms_client_to_server.as_bytes().to_vec())
+            .write_vec(self.mac_algorithms_server_to_client.as_bytes().to_vec())
+            .write_vec(
+                self.compression_algorithms_client_to_server
+                    .as_bytes()
+                    .to_vec(),
+            )
+            .write_vec(
+                self.compression_algorithms_server_to_client
+                    .as_bytes()
+                    .to_vec(),
+            )
+            .write_vec(self.languages_client_to_server.as_bytes().to_vec())
+            .write_vec(self.languages_server_to_client.as_bytes().to_vec())
+            .write_u8(self.first_kex_packet_follows as u8)
+            .write_vec(self.reserved.to_vec())
             .build()
     }
 }
@@ -218,6 +253,14 @@ impl DiffieHellmanKeyExchange {
         // create a signature of H
         let dh_signed = keypair.sign::<Sha512>(&hasher.result()); // s
 
+        let hash_algo = String::from("ssh-ed25519");
+        let h = Builder::new()
+            .write_u32(hash_algo.len() as u32)
+            .write_vec(hash_algo.as_bytes().to_vec())
+            .write_u32(dh_signed.to_bytes().len() as u32)
+            .write_vec(dh_signed.to_bytes().to_vec())
+            .build();
+
         let payload = Builder::new()
             // ssh_msg_kexdh
             .write_u8(31)
@@ -228,8 +271,8 @@ impl DiffieHellmanKeyExchange {
             .write_vec(host_key) // K_S
             .write_u32(curve_public.to_bytes().len() as u32)
             .write_vec(curve_public.to_bytes().to_vec()) // f
-            .write_u32(dh_signed.to_bytes().len() as u32)
-            .write_vec(dh_signed.to_bytes().to_vec()) // s
+            .write_u32(h.len() as u32)
+            .write_vec(h) // s
             .build();
 
         let mut padding = ((4 + 1 + payload.len()) % 8) as u8;
@@ -274,10 +317,18 @@ impl SSHTransport {
             if !protocol_exchange {
                 match ProtocolVersionExchange::parse(&buffer) {
                     Ok(x) => {
-                        client_identifier = x.identifier;
+                        client_identifier = x
+                            .identifier
+                            .into_iter()
+                            .filter(|x| *x != 10 && *x != 13)
+                            .collect();
 
                         let response = ProtocolVersionExchange::build();
-                        server_identifier = response.clone();
+                        server_identifier = response
+                            .clone()
+                            .into_iter()
+                            .filter(|x| *x != 10 && *x != 13)
+                            .collect();
                         self.tcp_listener.write(&response).unwrap();
                         protocol_exchange = true;
                         continue;
@@ -288,8 +339,11 @@ impl SSHTransport {
                 match AlgorithmNegotiation::parse(&buffer) {
                     Ok(x) => {
                         let response = AlgorithmNegotiation::build();
-                        client_kex = x.complete_data;
-                        server_kex = response.clone();
+
+                        client_kex = x.build_payload();
+                        server_kex = AlgorithmNegotiation::parse(&response)
+                            .unwrap()
+                            .build_payload();
 
                         self.tcp_listener.write(&response).unwrap();
                         payload = true;
