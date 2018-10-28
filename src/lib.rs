@@ -59,10 +59,10 @@ impl SSHTransport {
                     Ok(x) => {
                         let response = AlgorithmNegotiation::build();
 
-                        client_kex = x.build_payload();
+                        client_kex = x.build_hash_payload();
                         server_kex = AlgorithmNegotiation::parse(&response)
                             .unwrap()
-                            .build_payload();
+                            .build_hash_payload();
 
                         self.tcp_listener.write(&response).unwrap();
                         payload = true;

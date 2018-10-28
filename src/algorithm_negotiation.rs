@@ -103,48 +103,36 @@ impl AlgorithmNegotiation {
             .build()
     }
 
-    pub fn build_payload(self) -> Vec<u8> {
+    pub fn build_hash_payload(self) -> Vec<u8> {
         Builder::new()
-            .write_u8(self.ssh_msg_kexinit)
             .write_vec(self.cookie.to_vec())
-            .write_u32(self.kex_algorithms.len() as u32)
             .write_vec(self.kex_algorithms.as_bytes().to_vec())
-            .write_u32(self.server_host_key_algorithms.len() as u32)
             .write_vec(self.server_host_key_algorithms.as_bytes().to_vec())
-            .write_u32(self.encryption_algorithms_client_to_server.len() as u32)
             .write_vec(
                 self.encryption_algorithms_client_to_server
                     .as_bytes()
                     .to_vec(),
             )
-            .write_u32(self.encryption_algorithms_server_to_client.len() as u32)
             .write_vec(
                 self.encryption_algorithms_server_to_client
                     .as_bytes()
                     .to_vec(),
             )
-            .write_u32(self.mac_algorithms_client_to_server.len() as u32)
             .write_vec(self.mac_algorithms_client_to_server.as_bytes().to_vec())
-            .write_u32(self.mac_algorithms_server_to_client.len() as u32)
             .write_vec(self.mac_algorithms_server_to_client.as_bytes().to_vec())
-            .write_u32(self.compression_algorithms_client_to_server.len() as u32)
             .write_vec(
                 self.compression_algorithms_client_to_server
                     .as_bytes()
                     .to_vec(),
             )
-            .write_u32(self.compression_algorithms_server_to_client.len() as u32)
             .write_vec(
                 self.compression_algorithms_server_to_client
                     .as_bytes()
                     .to_vec(),
             )
-            .write_u32(self.languages_client_to_server.len() as u32)
             .write_vec(self.languages_client_to_server.as_bytes().to_vec())
-            .write_u32(self.languages_server_to_client.len() as u32)
             .write_vec(self.languages_server_to_client.as_bytes().to_vec())
             .write_u8(self.first_kex_packet_follows as u8)
-            .write_vec(self.reserved.to_vec())
             .build()
     }
 }
