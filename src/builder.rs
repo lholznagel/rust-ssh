@@ -33,6 +33,23 @@ impl Builder {
         self
     }
 
+    pub fn write_mpint(self, mut vec: Vec<u8>) -> Self {
+        let mut extra = Vec::new();
+
+        if vec[0] >= 128 {
+            extra.push(0);
+        }
+
+        if vec[0] == 0 {
+            vec.remove(0);
+        }
+
+        self
+            .write_u32(vec.len() as u32 + extra.len() as u32)
+            .write_vec(extra)
+            .write_vec(vec)
+    }
+
     pub fn build(self) -> Vec<u8> {
         self.bytes
     }
@@ -67,5 +84,37 @@ impl Display for Builder {
 
         write!(f, "|  0|")?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn test_mpint_0() {
+        let builder = Builder::new()
+            .write_mpint(vec![0])
+            .build();
+
+        assert_eq!(hex::encode(builder), "00000000");
+    }
+
+    #[test]
+    pub fn test_mpint_1() {
+        let builder = Builder::new()
+            .write_mpint(vec![9, 163, 120, 249, 178, 227, 50, 167])
+            .build();
+
+        assert_eq!(hex::encode(builder), "0000000809a378f9b2e332a7");
+    }
+
+    #[test]
+    pub fn test_mpint_2() {
+        let builder = Builder::new()
+            .write_mpint(vec![128])
+            .build();
+
+        assert_eq!(hex::encode(builder), "000000020080");
     }
 }
