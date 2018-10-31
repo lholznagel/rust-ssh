@@ -40,6 +40,35 @@ impl DiffieHellmanKeyExchange {
         })
     }
 
+    pub fn build_client() -> Vec<u8> {
+        // random gen for the curve
+        let mut curve_rand = rand::OsRng::new().unwrap();
+        // generate the curve25519 secret
+        let curve_secret = x25519_dalek::generate_secret(&mut curve_rand);
+        // generate the curve25519 public
+        let curve_public = x25519_dalek::generate_public(&curve_secret);
+
+        let payload = Builder::new()
+            .write_u8(30) // message_code
+            .write_u32(32)
+            .write_vec(curve_public.as_bytes().to_vec()) // e
+            .build();
+
+        let mut padding = ((4 + 1 + payload.len()) % 8) as u8;
+        if padding < 4 {
+            padding = 8 - padding;
+        } else {
+            padding = 8 + (8 - padding);
+        }
+
+        Builder::new()
+            .write_u32(1 + payload.len() as u32 + padding as u32)
+            .write_u8(padding)
+            .write_vec(payload)
+            .write_vec(vec![0; padding as usize])
+            .build()
+    }
+
     pub fn build(self) -> Vec<u8> {
         // convert e to a array of 32 elements
         let mut e = [0; 32];

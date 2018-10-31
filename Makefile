@@ -2,6 +2,9 @@ profile:
 	cargo build
 	valgrind --tool=massif target/debug/examples/server
 
+client:
+	cargo run --example client
+
 server:
 	cargo run --example server
 
