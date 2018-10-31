@@ -118,35 +118,21 @@ impl DiffieHellmanKeyExchange {
     }
 
     pub fn hash(self, host_key: Vec<u8>, f: Vec<u8>, dh: Vec<u8>) -> Vec<u8> {
-        let mut client_identifier = self.diffie_hellman.client_identifier;
-        let mut server_identifier = self.diffie_hellman.server_identifier;
-        let mut ic = Builder::new()
+        let builder = Builder::new()
+            .write_vec(self.diffie_hellman.client_identifier)
+            .write_vec(self.diffie_hellman.server_identifier)
             .write_u32(self.diffie_hellman.client_kex.len() as u32)
-            .build();
-        let mut client_kex = self.diffie_hellman.client_kex;
-        let mut is = Builder::new()
+            .write_vec(self.diffie_hellman.client_kex)
             .write_u32(self.diffie_hellman.server_kex.len() as u32)
+            .write_vec(self.diffie_hellman.server_kex)
+            .write_vec(host_key)
+            .write_vec(self.e)
+            .write_vec(f)
+            .write_mpint(dh)
             .build();
-        let mut server_kex = self.diffie_hellman.server_kex;
-        let mut host_key = host_key;
-        let mut e = self.e;
-        let mut f = f;
-        let mut dh = dh;
-
-        let mut data = Vec::new(); // H
-        data.append(&mut client_identifier); // V_C
-        data.append(&mut server_identifier); // V_S
-        data.append(&mut ic);
-        data.append(&mut client_kex); // I_C
-        data.append(&mut is);
-        data.append(&mut server_kex); // I_S
-        data.append(&mut host_key); // K_S
-        data.append(&mut e); // e
-        data.append(&mut f); // f
-        data.append(&mut dh); // K
 
         let mut hasher = Sha256::new();
-        hasher.input(&data);
+        hasher.input(&builder);
         hasher.result().as_slice().to_vec()
     }
 }
