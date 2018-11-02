@@ -1,4 +1,5 @@
 use crate::algorithm_negotiation::*;
+use crate::builder::Builder;
 use crate::diffie_hellman_exchange::*;
 use crate::protocol_version_exchange::*;
 use std::io::{Read, Write};
@@ -46,8 +47,6 @@ impl SSHClient {
                             .filter(|x| *x != 10 && *x != 13)
                             .collect();
 
-                        let algorithm = AlgorithmNegotiation::build();
-                        self.tcp_listener.write(&algorithm).unwrap();
                         protocol_exchange = true;
                         continue;
                     }
@@ -62,10 +61,13 @@ impl SSHClient {
                             .build_hash_payload();
                         server_kex = x.build_hash_payload();
 
+                        let algorithm = AlgorithmNegotiation::build();
+                        self.tcp_listener.write(&algorithm).unwrap();
+                        algorithm_negotiation = true;
+
                         self.tcp_listener
                             .write(&DiffieHellmanKeyExchange::build_client())
                             .unwrap();
-                        algorithm_negotiation = true;
                         continue;
                     }
                     _ => println!("Not AlgorithmNegotiation"),
@@ -81,8 +83,15 @@ impl SSHClient {
                     },
                 ) {
                     Ok(x) => {
+                        let builder = Builder::new()
+                            .write_u32(12) // length
+                            .write_u8(10) // padding
+                            .write_u8(21) // type
+                            .write_vec(vec![0; 10]) // padding
+                            .build();
+
+                        self.tcp_listener.write(&builder).unwrap();
                         diffie_hellman = true;
-                        std::process::exit(0);
                     }
                     _ => println!("Not DiffieHellmanKeyExchange"),
                 };

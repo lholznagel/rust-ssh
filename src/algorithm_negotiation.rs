@@ -50,9 +50,8 @@ impl AlgorithmNegotiation {
         })
     }
 
-    // TODO optimize
     pub fn build() -> Vec<u8> {
-        let kex = String::from("curve25519-sha256");
+        let kex = String::from("curve25519-sha256@libssh.org");
         let server_host_key = String::from("ssh-ed25519");
         let encryption_algorithm = String::from("chacha20-poly1305@openssh.com");
         let mac_algorithm = String::from("hmac-sha2-256");
