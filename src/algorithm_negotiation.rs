@@ -1,5 +1,4 @@
-use crate::builder::Builder;
-use crate::parser::Parser;
+use crate::misc::{Builder, Parser};
 use failure::Error;
 
 // TODO randomg

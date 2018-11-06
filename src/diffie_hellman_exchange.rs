@@ -1,9 +1,9 @@
-use crate::builder::Builder;
-use crate::parser::Parser;
+use crate::misc::{Builder, Parser};
 use failure::Error;
 use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io::Read;
+use crate::message::Message;
 
 #[derive(Clone, Debug, Default)]
 pub struct DiffiHellman {
@@ -20,6 +20,10 @@ pub struct DiffieHellmanKeyExchange {
     pub ssh_msg_kexdh: u8,
     pub e: Vec<u8>,
     pub diffie_hellman: DiffiHellman,
+}
+
+impl Message for DiffieHellmanKeyExchange {
+    
 }
 
 impl DiffieHellmanKeyExchange {

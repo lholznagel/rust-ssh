@@ -24,10 +24,6 @@ impl ProtocolVersionExchange {
     }
 
     pub fn build() -> Vec<u8> {
-        // TODO variable name
-        // SSH-2.0-TEST0.1.0
-        vec![
-            83, 83, 72, 45, 50, 46, 48, 45, 84, 69, 83, 84, 48, 46, 49, 46, 48, 13, 10,
-        ]
+        "SSH-2.0-rssh_0.1.0\r\n".as_bytes().to_vec()
     }
 }

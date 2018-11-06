@@ -1,5 +1,5 @@
 use crate::algorithm_negotiation::*;
-use crate::builder::Builder;
+use crate::misc::Builder;
 use crate::diffie_hellman_exchange::*;
 use crate::protocol_version_exchange::*;
 use std::io::{Read, Write};
