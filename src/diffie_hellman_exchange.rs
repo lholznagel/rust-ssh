@@ -3,7 +3,7 @@ use failure::Error;
 use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io::Read;
-use crate::message::Message;
+use crate::misc::message::wrap_payload;
 
 #[derive(Clone, Debug, Default)]
 pub struct DiffiHellman {
@@ -20,10 +20,6 @@ pub struct DiffieHellmanKeyExchange {
     pub ssh_msg_kexdh: u8,
     pub e: Vec<u8>,
     pub diffie_hellman: DiffiHellman,
-}
-
-impl Message for DiffieHellmanKeyExchange {
-    
 }
 
 impl DiffieHellmanKeyExchange {
@@ -58,19 +54,7 @@ impl DiffieHellmanKeyExchange {
             .write_vec(curve_public.as_bytes().to_vec()) // e
             .build();
 
-        let mut padding = ((4 + 1 + payload.len()) % 8) as u8;
-        if padding < 4 {
-            padding = 8 - padding;
-        } else {
-            padding = 8 + (8 - padding);
-        }
-
-        Builder::new()
-            .write_u32(1 + payload.len() as u32 + padding as u32)
-            .write_u8(padding)
-            .write_vec(payload)
-            .write_vec(vec![0; padding as usize])
-            .build()
+        wrap_payload(payload)
     }
 
     pub fn build(self) -> Vec<u8> {
@@ -103,7 +87,7 @@ impl DiffieHellmanKeyExchange {
             _ => panic!(),
         };
 
-        let hash = self.hash(
+        let hash = self.clone().hash(
             public.to_vec(),
             curve_public.as_bytes().to_vec(),
             dh.to_vec(),
@@ -135,19 +119,7 @@ impl DiffieHellmanKeyExchange {
             .write_vec(h) // s
             .build();
 
-        let mut padding = ((4 + 1 + payload.len()) % 8) as u8;
-        if padding < 4 {
-            padding = 8 - padding;
-        } else {
-            padding = 8 + (8 - padding);
-        }
-
-        Builder::new()
-            .write_u32(1 + payload.len() as u32 + padding as u32)
-            .write_u8(padding)
-            .write_vec(payload)
-            .write_vec(vec![0; padding as usize])
-            .build()
+        wrap_payload(payload)
     }
 
     pub fn hash(self, host_key: Vec<u8>, f: Vec<u8>, dh: Vec<u8>) -> Vec<u8> {

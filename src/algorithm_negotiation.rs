@@ -1,4 +1,4 @@
-use crate::misc::{Builder, Parser};
+use crate::misc::{algorithms::*, Builder, Parser, message::wrap_payload};
 use failure::Error;
 
 // TODO randomg
@@ -50,31 +50,28 @@ impl AlgorithmNegotiation {
     }
 
     pub fn build() -> Vec<u8> {
-        let kex = String::from("curve25519-sha256@libssh.org");
-        let server_host_key = String::from("ssh-ed25519");
-        let encryption_algorithm = String::from("chacha20-poly1305@openssh.com");
-        let mac_algorithm = String::from("hmac-sha2-256");
-        let compression = String::from("none");
+        let kex = KeyExchangeAlgorithm::to_vec(KeyExchangeAlgorithm::Curve25519Sha256AtLibsshDotOrg);
+        let server_host_key = HostKeyAlgorithm::to_vec(HostKeyAlgorithm::SshEd25519);
+        let encryption_algorithm = EncryptionAlgorithm::to_vec(EncryptionAlgorithm::Chacha20Poly1305AtOpensshDotCom);
+        let compression = CompressionAlgorithm::to_vec(CompressionAlgorithm::None);
 
         let payload = Builder::new()
             .write_u8(20)
             .write_vec(generate_cookie().to_vec())
             .write_u32(kex.len() as u32)
-            .write_vec(kex.as_bytes().to_vec())
+            .write_vec(kex)
             .write_u32(server_host_key.len() as u32)
-            .write_vec(server_host_key.as_bytes().to_vec())
+            .write_vec(server_host_key)
             .write_u32(encryption_algorithm.len() as u32)
-            .write_vec(encryption_algorithm.as_bytes().to_vec())
+            .write_vec(encryption_algorithm.clone())
             .write_u32(encryption_algorithm.len() as u32)
-            .write_vec(encryption_algorithm.as_bytes().to_vec())
-            .write_u32(mac_algorithm.len() as u32)
-            .write_vec(mac_algorithm.as_bytes().to_vec())
-            .write_u32(mac_algorithm.len() as u32)
-            .write_vec(mac_algorithm.as_bytes().to_vec())
+            .write_vec(encryption_algorithm)
+            .write_u32(0)
+            .write_u32(0)
             .write_u32(compression.len() as u32)
-            .write_vec(compression.as_bytes().to_vec())
+            .write_vec(compression.clone())
             .write_u32(compression.len() as u32)
-            .write_vec(compression.as_bytes().to_vec())
+            .write_vec(compression)
             // language
             .write_u32(0)
             // language
@@ -85,20 +82,7 @@ impl AlgorithmNegotiation {
             .write_u32(0)
             .build();
 
-        // 4 -> packet length, 1 -> padding length
-        let mut padding = ((4 + 1 + payload.len()) % 8) as u8;
-        if padding < 4 {
-            padding = 8 - padding;
-        }
-
-        let builder = Builder::with_capacity(payload.len());
-        builder
-            // 1 -> padding length
-            .write_u32(1 + payload.len() as u32 + padding as u32)
-            .write_u8(padding)
-            .write_vec(payload)
-            .write_vec(vec![0; padding as usize])
-            .build()
+        wrap_payload(payload)
     }
 
     pub fn build_hash_payload(self) -> Vec<u8> {
