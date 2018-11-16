@@ -7,6 +7,13 @@ pub struct ProtocolVersionExchange {
 
 impl ProtocolVersionExchange {
     pub fn parse(data: &[u8]) -> Result<Self, Error> {
+        let data = data
+                .to_vec()
+                .into_iter()
+                .filter(|x| *x != 0)
+                .map(|x| x)
+                .collect::<Vec<u8>>();
+
         if data.len() > 255 {
             return Err(format_err!("Protocol version too long!"));
         }
@@ -14,12 +21,7 @@ impl ProtocolVersionExchange {
         // TODO: the first line does not have to be the SSH string
         if data[0] == 83 && data[1] == 83 && data[2] == 72 {
             Ok(Self {
-                identifier: data
-                    .to_vec()
-                    .into_iter()
-                    .filter(|x| *x != 0)
-                    .map(|x| x)
-                    .collect::<Vec<u8>>(),
+                identifier: data,
             })
         } else {
             Err(format_err!(""))
@@ -52,7 +54,7 @@ mod tests {
     #[test]
     pub fn test_003() {
         let mut data = "SSH-2.0-test-0.1.0\r\n".as_bytes().to_vec();
-        data.append(&mut vec![0; 236]);
+        data.append(&mut vec![1; 236]);
         let result = ProtocolVersionExchange::parse(&data);
         assert!(result.is_err());
     }

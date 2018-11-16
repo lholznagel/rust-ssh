@@ -49,14 +49,12 @@ impl SSHServer {
                     _ => println!("Not ProtocolVersionExchange"),
                 };
             } else if !payload {
-                match AlgorithmNegotiation::parse(&buffer) {
-                    Ok(x) => {
-                        let response = AlgorithmNegotiation::build();
+                match KexInit::parse(&buffer) {
+                    Ok(client_msg_parsed) => {
+                        let response = KexInit::build();
 
-                        client_kex = x.build_hash_payload();
-                        server_kex = AlgorithmNegotiation::parse(&response)
-                            .unwrap()
-                            .build_hash_payload();
+                        client_kex = client_msg_parsed.build_hash_payload();
+                        server_kex = KexInit::parse(&response).unwrap().build_hash_payload();
 
                         self.tcp_listener.write(&response).unwrap();
                         payload = true;

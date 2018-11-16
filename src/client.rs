@@ -53,15 +53,15 @@ impl SSHClient {
                     _ => println!("Not ProtocolVersionExchange"),
                 };
             } else if !algorithm_negotiation {
-                match AlgorithmNegotiation::parse(&buffer) {
+                match KexInit::parse(&buffer) {
                     Ok(x) => {
-                        let response = AlgorithmNegotiation::build();
-                        client_kex = AlgorithmNegotiation::parse(&response)
+                        let response = KexInit::build();
+                        client_kex = KexInit::parse(&response)
                             .unwrap()
                             .build_hash_payload();
                         server_kex = x.build_hash_payload();
 
-                        let algorithm = AlgorithmNegotiation::build();
+                        let algorithm = KexInit::build();
                         self.tcp_listener.write(&algorithm).unwrap();
                         algorithm_negotiation = true;
 
@@ -70,7 +70,7 @@ impl SSHClient {
                             .unwrap();
                         continue;
                     }
-                    _ => println!("Not AlgorithmNegotiation"),
+                    _ => println!("Not KexInit"),
                 };
             } else if !diffie_hellman {
                 match DiffieHellmanKeyExchange::parse(
@@ -137,12 +137,12 @@ impl SSHClient {
                     _ => println!("Not ProtocolVersionExchange"),
                 };
             } else if !payload {
-                match AlgorithmNegotiation::parse(&buffer) {
+                match KexInit::parse(&buffer) {
                     Ok(x) => {
-                        let response = AlgorithmNegotiation::build();
+                        let response = KexInit::build();
 
                         client_kex = x.build_hash_payload();
-                        server_kex = AlgorithmNegotiation::parse(&response)
+                        server_kex = KexInit::parse(&response)
                             .unwrap()
                             .build_hash_payload();
 
@@ -150,7 +150,7 @@ impl SSHClient {
                         payload = true;
                         continue;
                     }
-                    _ => println!("Not AlgorithmNegotiation"),
+                    _ => println!("Not KexInit"),
                 };
             } else if !diffie {
                 match DiffieHellmanKeyExchange::parse(

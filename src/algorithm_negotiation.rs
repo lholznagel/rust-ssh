@@ -7,7 +7,7 @@ pub fn generate_cookie() -> [u8; 16] {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct AlgorithmNegotiation {
+pub struct KexInit {
     pub packet_length: u32,
     pub padding_length: u8,
     pub ssh_msg_kexinit: u8,
@@ -26,7 +26,7 @@ pub struct AlgorithmNegotiation {
     pub reserved: Vec<u8>,
 }
 
-impl AlgorithmNegotiation {
+impl KexInit {
     pub fn parse(data: &[u8]) -> Result<Self, Error> {
         let mut parser = Parser::new(data);
         Ok(Self {
@@ -87,34 +87,30 @@ impl AlgorithmNegotiation {
 
     pub fn build_hash_payload(self) -> Vec<u8> {
         Builder::new()
-            .write_vec(self.cookie.to_vec())
+            .write_u8(20)
+            .write_vec(self.cookie)
+            .write_u32(self.kex_algorithms.len() as u32)
             .write_vec(self.kex_algorithms.as_bytes().to_vec())
+            .write_u32(self.server_host_key_algorithms.len() as u32)
             .write_vec(self.server_host_key_algorithms.as_bytes().to_vec())
-            .write_vec(
-                self.encryption_algorithms_client_to_server
-                    .as_bytes()
-                    .to_vec(),
-            )
-            .write_vec(
-                self.encryption_algorithms_server_to_client
-                    .as_bytes()
-                    .to_vec(),
-            )
+            .write_u32(self.encryption_algorithms_client_to_server.len() as u32)
+            .write_vec(self.encryption_algorithms_client_to_server.as_bytes().to_vec())
+            .write_u32(self.encryption_algorithms_server_to_client.len() as u32)
+            .write_vec(self.encryption_algorithms_server_to_client.as_bytes().to_vec())
+            .write_u32(self.mac_algorithms_client_to_server.len() as u32)
             .write_vec(self.mac_algorithms_client_to_server.as_bytes().to_vec())
+            .write_u32(self.mac_algorithms_server_to_client.len() as u32)
             .write_vec(self.mac_algorithms_server_to_client.as_bytes().to_vec())
-            .write_vec(
-                self.compression_algorithms_client_to_server
-                    .as_bytes()
-                    .to_vec(),
-            )
-            .write_vec(
-                self.compression_algorithms_server_to_client
-                    .as_bytes()
-                    .to_vec(),
-            )
+            .write_u32(self.compression_algorithms_client_to_server.len() as u32)
+            .write_vec(self.compression_algorithms_client_to_server.as_bytes().to_vec())
+            .write_u32(self.compression_algorithms_server_to_client.len() as u32)
+            .write_vec(self.compression_algorithms_server_to_client.as_bytes().to_vec())
+            .write_u32(self.languages_client_to_server.len() as u32)
             .write_vec(self.languages_client_to_server.as_bytes().to_vec())
+            .write_u32(self.languages_server_to_client.len() as u32)
             .write_vec(self.languages_server_to_client.as_bytes().to_vec())
             .write_u8(self.first_kex_packet_follows as u8)
+            .write_u32(0)
             .build()
     }
 }
