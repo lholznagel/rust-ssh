@@ -69,9 +69,9 @@ impl DiffieHellmanKeyExchange {
         // generate the curve25519 secret
         let curve_secret = x25519_dalek::generate_secret(&mut curve_rand);
         // generate the curve25519 public
-        let curve_public = x25519_dalek::generate_public(&curve_secret);
+        let f = x25519_dalek::generate_public(&curve_secret);
         // shared diffie hellman key, combining the own secret with the client public
-        let dh = x25519_dalek::diffie_hellman(&curve_secret, &e);
+        let k = x25519_dalek::diffie_hellman(&curve_secret, &e);
 
         // read the host key
         let mut ed25519 = String::new();
@@ -89,8 +89,8 @@ impl DiffieHellmanKeyExchange {
 
         let hash = self.clone().hash(
             public.to_vec(),
-            curve_public.as_bytes().to_vec(),
-            dh.to_vec(),
+            f.as_bytes().to_vec(),
+            k.to_vec(),
         );
 
         // create a signature of H
@@ -116,8 +116,8 @@ impl DiffieHellmanKeyExchange {
             .write_vec(String::from("ssh-ed25519").as_bytes().to_vec())
             .write_u32(public.len() as u32)
             .write_vec(public.to_vec()) // K_S
-            .write_u32(curve_public.to_bytes().len() as u32)
-            .write_vec(curve_public.to_bytes().to_vec()) // f
+            .write_u32(f.to_bytes().len() as u32)
+            .write_vec(f.to_bytes().to_vec()) // f
             .write_u32(h.len() as u32)
             .write_vec(h) // s
             .write_vec(vec![0; 16])
@@ -126,24 +126,24 @@ impl DiffieHellmanKeyExchange {
         //wrap_payload(payload)
     }
 
-    pub fn hash(self, host_key: Vec<u8>, f: Vec<u8>, dh: Vec<u8>) -> Vec<u8> {
+    pub fn hash(self, host_key: Vec<u8>, f: Vec<u8>, k: Vec<u8>) -> Vec<u8> {
         let builder = Builder::new()
             .write_u32(self.diffie_hellman.client_identifier.len() as u32)
-            .write_vec(self.diffie_hellman.client_identifier)
+            .write_vec(self.diffie_hellman.client_identifier) // V_C
             .write_u32(self.diffie_hellman.server_identifier.len() as u32)
-            .write_vec(self.diffie_hellman.server_identifier)
+            .write_vec(self.diffie_hellman.server_identifier) // V_S
             .write_u32(self.diffie_hellman.client_kex.len() as u32)
-            .write_vec(self.diffie_hellman.client_kex)
+            .write_vec(self.diffie_hellman.client_kex) // I_C
             .write_u32(self.diffie_hellman.server_kex.len() as u32)
-            .write_vec(self.diffie_hellman.server_kex)
+            .write_vec(self.diffie_hellman.server_kex) // I_S
             .write_u32(host_key.len() as u32)
-            .write_vec(host_key)
+            .write_vec(host_key) // K_S
             .write_u32(self.e.len() as u32)
-            .write_mpint(self.e)
+            .write_vec(self.e) // e
             .write_u32(f.len() as u32)
-            .write_mpint(f)
-            .write_u32(dh.len() as u32)
-            .write_mpint(dh)
+            .write_vec(f) // f
+            .write_u32(k.len() as u32)
+            .write_vec(k) // K
             .build();
 
         let mut hasher = Sha256::new();
@@ -318,11 +318,11 @@ UoWSg/X10k+iHKWAY1VZAAAAEmxob2x6bmFnZWxAYW5hcmNoeQECAw==
             .write_u32(ks.len() as u32)
             .write_vec(ks.to_vec()) // K_S
             .write_u32(e.len() as u32)
-            .write_mpint(e.to_vec()) // e
+            .write_vec(e.to_vec()) // e
             .write_u32(f.len() as u32)
-            .write_mpint(f.to_vec()) // f
+            .write_vec(f.to_vec()) // f
             .write_u32(client_dh.len() as u32)
-            .write_mpint(client_dh.to_vec()) // K
+            .write_vec(client_dh.to_vec()) // K
             .build();
 
         let mut hasher = Sha256::new();
