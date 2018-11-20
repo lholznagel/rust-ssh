@@ -44,8 +44,7 @@ impl Builder {
             vec.remove(0);
         }
 
-        self
-            .write_u32(vec.len() as u32 + extra.len() as u32)
+        self.write_u32(vec.len() as u32 + extra.len() as u32)
             .write_vec(extra)
             .write_vec(vec)
     }
@@ -97,7 +96,7 @@ mod tests {
             .write_mpint(vec![0])
             .build();
 
-        assert_eq!(hex::encode(builder), "00000000");
+        assert_eq!(builder, hex::decode("00000000").unwrap());
     }
 
     #[test]
@@ -106,7 +105,7 @@ mod tests {
             .write_mpint(vec![9, 163, 120, 249, 178, 227, 50, 167])
             .build();
 
-        assert_eq!(hex::encode(builder), "0000000809a378f9b2e332a7");
+        assert_eq!(builder, hex::decode("0000000809a378f9b2e332a7").unwrap());
     }
 
     #[test]
@@ -115,6 +114,6 @@ mod tests {
             .write_mpint(vec![128])
             .build();
 
-        assert_eq!(hex::encode(builder), "000000020080");
+        assert_eq!(builder, hex::decode("000000020080").unwrap());
     }
 }

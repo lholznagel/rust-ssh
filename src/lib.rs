@@ -1,4 +1,4 @@
-mod algorithm_negotiation;
+mod kex_init;
 mod diffie_hellman_exchange;
 mod protocol_version_exchange;
 
@@ -7,7 +7,7 @@ mod misc {
     mod parser;
 
     pub mod algorithms;
-    pub mod message;
+    pub mod payload;
 
     pub use self::builder::Builder;
     pub use self::parser::Parser;

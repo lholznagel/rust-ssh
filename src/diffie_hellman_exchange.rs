@@ -1,4 +1,4 @@
-use crate::misc::message::wrap_payload;
+use crate::misc::payload::wrap_payload;
 use crate::misc::{Builder, Parser};
 use failure::Error;
 use sha2::{Digest, Sha256};

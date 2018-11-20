@@ -1,4 +1,4 @@
-use crate::misc::{algorithms::*, Builder, Parser, message::wrap_payload};
+use crate::misc::{algorithms::*, Builder, Parser, payload::wrap_payload};
 use failure::Error;
 
 // TODO randomg

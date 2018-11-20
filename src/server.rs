@@ -1,4 +1,4 @@
-use crate::algorithm_negotiation::*;
+use crate::kex_init::*;
 use crate::diffie_hellman_exchange::*;
 use crate::protocol_version_exchange::*;
 use std::io::{Read, Write};
@@ -60,7 +60,7 @@ impl SSHServer {
                         payload = true;
                         continue;
                     }
-                    _ => println!("Not AlgorithmNegotiation"),
+                    _ => println!("Not KexInit"),
                 };
             } else if !diffie {
                 match DiffieHellmanKeyExchange::parse(
