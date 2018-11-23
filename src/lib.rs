@@ -1,6 +1,6 @@
-mod kex_init;
-mod diffie_hellman_exchange;
-mod protocol_version_exchange;
+mod kex;
+mod kexdh;
+mod protocol;
 
 mod misc {
     mod builder;

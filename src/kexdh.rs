@@ -14,7 +14,7 @@ pub struct DiffiHellman {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct DiffieHellmanKeyExchange {
+pub struct KexDh {
     pub packet_length: u32,
     pub padding_length: u8,
     pub ssh_msg_kexdh: u8,
@@ -22,7 +22,7 @@ pub struct DiffieHellmanKeyExchange {
     pub diffie_hellman: DiffiHellman,
 }
 
-impl DiffieHellmanKeyExchange {
+impl KexDh {
     pub fn parse(data: &[u8], diffie_hellman: DiffiHellman) -> Result<Self, Error> {
         let mut parser = Parser::new(data);
         let packet_length = parser.read_u32()?;
@@ -288,7 +288,7 @@ UoWSg/X10k+iHKWAY1VZAAAAEmxob2x6bmFnZWxAYW5hcmNoeQECAw==
         let f = server_public_curve;
         let k = x25519_dalek::diffie_hellman(&server_secret_curve, &client_public_curve);
 
-        let diffie_hellman_exchange = DiffieHellmanKeyExchange {
+        let diffie_hellman_exchange = KexDh {
             packet_length: 0,
             padding_length: 0,
             ssh_msg_kexdh: 0,
@@ -332,7 +332,7 @@ UoWSg/X10k+iHKWAY1VZAAAAEmxob2x6bmFnZWxAYW5hcmNoeQECAw==
         assert_eq!(client_hash, server_hash);
         assert!(crypto::ed25519::verify(
             &client_hash,
-            &parsed_server_ed25519_public,
+            &ks,
             &server_sign
         ));
     }

@@ -1,7 +1,7 @@
-use crate::kex_init::*;
+use crate::kex::*;
 use crate::misc::Builder;
-use crate::diffie_hellman_exchange::*;
-use crate::protocol_version_exchange::*;
+use crate::kexdh::*;
+use crate::protocol::*;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 
@@ -15,7 +15,7 @@ impl SSHClient {
     }
 
     pub fn connect(mut self) {
-        let protocol_version_exchange = ProtocolVersionExchange::build();
+        let protocol_version_exchange = Protocol::build();
         self.tcp_listener.write(&protocol_version_exchange).unwrap();
 
         let mut client_identifier = Vec::new();
@@ -32,7 +32,7 @@ impl SSHClient {
             self.tcp_listener.read(&mut buffer).unwrap();
 
             if !protocol_exchange {
-                match ProtocolVersionExchange::parse(&buffer) {
+                match Protocol::parse(&buffer) {
                     Ok(x) => {
                         server_identifier = x
                             .identifier
@@ -40,7 +40,7 @@ impl SSHClient {
                             .filter(|x| *x != 10 && *x != 13)
                             .collect();
 
-                        let response = ProtocolVersionExchange::build();
+                        let response = Protocol::build();
                         client_identifier = response
                             .clone()
                             .into_iter()
@@ -50,7 +50,7 @@ impl SSHClient {
                         protocol_exchange = true;
                         continue;
                     }
-                    _ => println!("Not ProtocolVersionExchange"),
+                    _ => println!("Not Protocol"),
                 };
             } else if !algorithm_negotiation {
                 match KexInit::parse(&buffer) {
@@ -66,14 +66,14 @@ impl SSHClient {
                         algorithm_negotiation = true;
 
                         self.tcp_listener
-                            .write(&DiffieHellmanKeyExchange::build_client())
+                            .write(&KexDh::build_client())
                             .unwrap();
                         continue;
                     }
                     _ => println!("Not KexInit"),
                 };
             } else if !diffie_hellman {
-                match DiffieHellmanKeyExchange::parse(
+                match KexDh::parse(
                     &buffer,
                     DiffiHellman {
                         client_identifier: client_identifier.clone(),
@@ -93,7 +93,7 @@ impl SSHClient {
                         self.tcp_listener.write(&builder).unwrap();
                         diffie_hellman = true;
                     }
-                    _ => println!("Not DiffieHellmanKeyExchange"),
+                    _ => println!("Not KexDh"),
                 };
             } else {
                 std::process::exit(0);
@@ -116,7 +116,7 @@ impl SSHClient {
             self.tcp_listener.read(&mut buffer).unwrap();
 
             if !protocol_exchange {
-                match ProtocolVersionExchange::parse(&buffer) {
+                match Protocol::parse(&buffer) {
                     Ok(x) => {
                         client_identifier = x
                             .identifier
@@ -124,7 +124,7 @@ impl SSHClient {
                             .filter(|x| *x != 10 && *x != 13)
                             .collect();
 
-                        let response = ProtocolVersionExchange::build();
+                        let response = Protocol::build();
                         server_identifier = response
                             .clone()
                             .into_iter()
@@ -134,7 +134,7 @@ impl SSHClient {
                         protocol_exchange = true;
                         continue;
                     }
-                    _ => println!("Not ProtocolVersionExchange"),
+                    _ => println!("Not Protocol"),
                 };
             } else if !payload {
                 match KexInit::parse(&buffer) {
@@ -153,7 +153,7 @@ impl SSHClient {
                     _ => println!("Not KexInit"),
                 };
             } else if !diffie {
-                match DiffieHellmanKeyExchange::parse(
+                match KexDh::parse(
                     &buffer,
                     DiffiHellman {
                         client_identifier: client_identifier.clone(),
@@ -167,7 +167,7 @@ impl SSHClient {
                         diffie = true;
                         continue;
                     }
-                    _ => println!("Not DiffieHellmanKeyExchange"),
+                    _ => println!("Not KexDh"),
                 };
             } else {
                 std::process::exit(0);

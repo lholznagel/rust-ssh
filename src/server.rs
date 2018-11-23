@@ -1,6 +1,6 @@
-use crate::kex_init::*;
-use crate::diffie_hellman_exchange::*;
-use crate::protocol_version_exchange::*;
+use crate::kex::*;
+use crate::kexdh::*;
+use crate::protocol::*;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 
@@ -28,7 +28,7 @@ impl SSHServer {
             self.tcp_listener.read(&mut buffer).unwrap();
 
             if !protocol_exchange {
-                match ProtocolVersionExchange::parse(&buffer) {
+                match Protocol::parse(&buffer) {
                     Ok(x) => {
                         client_identifier = x
                             .identifier
@@ -36,7 +36,7 @@ impl SSHServer {
                             .filter(|x| *x != 10 && *x != 13)
                             .collect();
 
-                        let response = ProtocolVersionExchange::build();
+                        let response = Protocol::build();
                         server_identifier = response
                             .clone()
                             .into_iter()
@@ -46,7 +46,7 @@ impl SSHServer {
                         protocol_exchange = true;
                         continue;
                     }
-                    _ => println!("Not ProtocolVersionExchange"),
+                    _ => println!("Not Protocol"),
                 };
             } else if !payload {
                 match KexInit::parse(&buffer) {
@@ -63,7 +63,7 @@ impl SSHServer {
                     _ => println!("Not KexInit"),
                 };
             } else if !diffie {
-                match DiffieHellmanKeyExchange::parse(
+                match KexDh::parse(
                     &buffer,
                     DiffiHellman {
                         client_identifier: client_identifier.clone(),
@@ -77,7 +77,7 @@ impl SSHServer {
                         diffie = true;
                         continue;
                     }
-                    _ => println!("Not DiffieHellmanKeyExchange"),
+                    _ => println!("Not KexDh"),
                 };
             } else {
                 std::process::exit(0);

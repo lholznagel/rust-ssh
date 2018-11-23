@@ -1,11 +1,11 @@
 use failure::{format_err, Error};
 
 #[derive(Clone, Debug)]
-pub struct ProtocolVersionExchange {
+pub struct Protocol {
     pub identifier: Vec<u8>,
 }
 
-impl ProtocolVersionExchange {
+impl Protocol {
     pub fn parse(data: &[u8]) -> Result<Self, Error> {
         let data = data
                 .to_vec()
@@ -40,14 +40,14 @@ mod tests {
     #[test]
     pub fn test_001() {
         let data = "SSH-2.0-test-0.1.0\r\n";
-        let result = ProtocolVersionExchange::parse(&data.as_bytes());
+        let result = Protocol::parse(&data.as_bytes());
         assert!(result.is_ok());
     }
 
     #[test]
     pub fn test_002() {
         let data = "SSH-2.0-test-0.1.0 Some_comment\r\n";
-        let result = ProtocolVersionExchange::parse(&data.as_bytes());
+        let result = Protocol::parse(&data.as_bytes());
         assert!(result.is_ok());
     }
 
@@ -55,7 +55,7 @@ mod tests {
     pub fn test_003() {
         let mut data = "SSH-2.0-test-0.1.0\r\n".as_bytes().to_vec();
         data.append(&mut vec![1; 236]);
-        let result = ProtocolVersionExchange::parse(&data);
+        let result = Protocol::parse(&data);
         assert!(result.is_err());
     }
 }
