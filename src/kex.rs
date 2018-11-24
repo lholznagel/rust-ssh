@@ -1,9 +1,14 @@
 use crate::misc::{algorithms::*, Builder, Parser, payload::wrap_payload};
 use failure::Error;
+use rand::rngs::OsRng;
+use rand::Rng;
 
 // TODO randomg
 pub fn generate_cookie() -> [u8; 16] {
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    let mut rand = OsRng::new().unwrap();
+    let mut cookie: [u8; 16] = [0; 16];
+    rand.try_fill(&mut cookie).unwrap();
+    return cookie
 }
 
 #[derive(Clone, Debug, Default)]
