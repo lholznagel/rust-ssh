@@ -1,4 +1,4 @@
-use crate::misc::{algorithms::*, Builder, Parser, payload::wrap_payload};
+use crate::misc::{ algorithms::*, Builder, Parser };
 use failure::Error;
 use rand::rngs::OsRng;
 use rand::Rng;
@@ -60,7 +60,7 @@ impl KexInit {
         let encryption_algorithm = EncryptionAlgorithm::to_vec(EncryptionAlgorithm::Chacha20Poly1305AtOpensshDotCom);
         let compression = CompressionAlgorithm::to_vec(CompressionAlgorithm::None);
 
-        let payload = Builder::new()
+        Builder::new()
             .write_u8(20)
             .write_vec(generate_cookie().to_vec())
             .write_u32(kex.len() as u32)
@@ -85,9 +85,7 @@ impl KexInit {
             .write_u8(0)
             // reserved
             .write_u32(0)
-            .build();
-
-        wrap_payload(payload)
+            .as_payload()
     }
 
     pub fn build_hash_payload(self) -> Vec<u8> {

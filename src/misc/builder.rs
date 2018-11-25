@@ -12,12 +12,6 @@ impl Builder {
         Self { bytes: Vec::new() }
     }
 
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self {
-            bytes: Vec::with_capacity(capacity),
-        }
-    }
-
     pub fn write_u8(mut self, value: u8) -> Self {
         self.bytes.write_u8(value).unwrap();
         self
@@ -51,6 +45,24 @@ impl Builder {
 
     pub fn build(self) -> Vec<u8> {
         self.bytes
+    }
+
+    pub fn as_payload(self) -> Vec<u8> {
+        // packet length + padding
+        let mut padding = ((4 + 1 + self.bytes.len()) % 8) as u8;
+        if padding < 4 {
+            padding = 8 - padding;
+        } else {
+            padding = 8 + (8 - padding);
+        }
+
+        Builder::new()
+            // padding field + payload
+            .write_u32(1 + self.bytes.len() as u32 + padding as u32)
+            .write_u8(padding)
+            .write_vec(self.bytes)
+            .write_vec(vec![0; padding as usize])
+            .build()
     }
 }
 

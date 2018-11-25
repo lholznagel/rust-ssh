@@ -82,7 +82,7 @@ impl SSHClient {
                         server_kex: server_kex.clone(),
                     },
                 ) {
-                    Ok(x) => {
+                    Ok(_) => {
                         let builder = Builder::new()
                             .write_u32(12) // length
                             .write_u8(10) // padding

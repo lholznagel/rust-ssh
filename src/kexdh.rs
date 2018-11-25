@@ -1,4 +1,3 @@
-use crate::misc::payload::wrap_payload;
 use crate::misc::{Builder, Parser};
 use failure::Error;
 use sha2::{Digest, Sha256};
@@ -49,13 +48,11 @@ impl KexDh {
         // generate the curve25519 public
         let curve_public = x25519_dalek::generate_public(&curve_secret);
 
-        let payload = Builder::new()
+        Builder::new()
             .write_u8(30) // message_code
             .write_u32(32)
             .write_vec(curve_public.as_bytes().to_vec()) // e
-            .build();
-
-        wrap_payload(payload)
+            .as_payload()
     }
 
     pub fn build(self) -> Vec<u8> {
@@ -97,10 +94,7 @@ impl KexDh {
             .write_vec(dh_signed.to_vec())
             .build();
 
-        //let payload = Builder::new()
         Builder::new()
-            .write_u32(196)
-            .write_u8(16)
             // ssh_msg_kexdh
             .write_u8(31)
             // length + algo + length + key
@@ -113,16 +107,10 @@ impl KexDh {
             .write_vec(f.to_bytes().to_vec()) // f
             .write_u32(h.len() as u32)
             .write_vec(h) // s
-            .write_vec(vec![0; 16])
-            .build()
-
-        //wrap_payload(payload)
+            .as_payload()
     }
 
     pub fn hash(self, host_key: Vec<u8>, f: Vec<u8>, k: Vec<u8>) -> Vec<u8> {
-        println!("{:?}", ::std::str::from_utf8(&self.diffie_hellman.client_identifier));
-        println!("{:?}", ::std::str::from_utf8(&self.diffie_hellman.server_identifier));
-
         let builder = Builder::new()
             .write_u32(self.diffie_hellman.client_identifier.len() as u32)
             .write_vec(self.diffie_hellman.client_identifier) // V_C
@@ -139,11 +127,10 @@ impl KexDh {
             .write_u32(f.len() as u32)
             .write_vec(f) // f
             .write_u32(k.len() as u32)
-            .write_vec(k) // K
+            .write_mpint(k) // K
             .build();
 
         let hasher = Sha256::digest(&builder);
-        println!("{:?}", hex::encode(hasher.clone()));
         hasher.as_slice().to_vec()
     }
 

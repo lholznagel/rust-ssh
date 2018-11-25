@@ -7,7 +7,6 @@ mod misc {
     mod parser;
 
     pub mod algorithms;
-    pub mod payload;
 
     pub use self::builder::Builder;
     pub use self::parser::Parser;
