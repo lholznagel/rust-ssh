@@ -1,5 +1,6 @@
 mod kex;
 mod kexdh;
+mod key;
 mod protocol;
 
 mod misc {

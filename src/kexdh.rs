@@ -1,9 +1,8 @@
+use crate::key::Ed25519Key;
 use crate::misc::{Builder, Parser};
 use failure::Error;
-use sha2::{Digest, Sha256};
-use std::fs::File;
-use std::io::Read;
 use rand::rngs::OsRng;
+use sha2::{Digest, Sha256};
 
 #[derive(Clone, Debug, Default)]
 pub struct DiffiHellman {
@@ -71,20 +70,14 @@ impl KexDh {
         // shared diffie hellman key, combining the own secret with the client public
         let k = x25519_dalek::diffie_hellman(&curve_secret, &e);
 
-        // read the host key
-        let mut ed25519 = String::new();
-        let mut file = File::open("./resources/id_ed25519").unwrap();
-        file.read_to_string(&mut ed25519).unwrap();
-        let (private, public) = self.parse_ed25519(ed25519);
+        let ed25519 = Ed25519Key::new("./resources/id_ed25519").unwrap();
 
-        let hash = self.clone().hash(
-            public.to_vec(),
-            f.as_bytes().to_vec(),
-            k.to_vec(),
-        );
+        let hash = self
+            .clone()
+            .hash(ed25519.public(), f.as_bytes().to_vec(), k.to_vec());
 
         // create a signature of H
-        let dh_signed = crypto::ed25519::signature(&hash, &private); // s
+        let dh_signed = crypto::ed25519::signature(&hash, &ed25519.private()); // s
 
         let hash_algo = String::from("ssh-ed25519");
         let h = Builder::new()
@@ -101,8 +94,8 @@ impl KexDh {
             .write_u32(4 + 11 + 4 + 32)
             .write_u32(11)
             .write_vec(String::from("ssh-ed25519").as_bytes().to_vec())
-            .write_u32(public.len() as u32)
-            .write_vec(public.to_vec()) // K_S
+            .write_u32(ed25519.public().len() as u32)
+            .write_vec(ed25519.public()) // K_S
             .write_u32(f.to_bytes().len() as u32)
             .write_vec(f.to_bytes().to_vec()) // f
             .write_u32(h.len() as u32)
@@ -133,36 +126,28 @@ impl KexDh {
         let hasher = Sha256::digest(&builder);
         hasher.as_slice().to_vec()
     }
-
-    fn parse_ed25519(&self, private_key: String) -> ([u8; 64], [u8; 32]) {
-        let private = ssh_keys::openssh::parse_private_key(&private_key).unwrap();
-        let public = match private[0].public_key() {
-            ssh_keys::PublicKey::Ed25519(v) => v,
-            _ => panic!(),
-        };
-        let private = match private[0] {
-            ssh_keys::PrivateKey::Ed25519(v) => v,
-            _ => panic!(),
-        };
-        (private, public)
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::kex::KexInit;
     use super::*;
+    use crate::kex::KexInit;
     use rand::rngs::OsRng;
 
     #[test]
     pub fn validate_hash() {
-        let server_ed25519 = String::from("-----BEGIN OPENSSH PRIVATE KEY-----
+        let server_ed25519 = String::from(
+            "-----BEGIN OPENSSH PRIVATE KEY-----
 b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
 QyNTUxOQAAACCHOHK/n6SEqk3zmUospMjvmFKFkoP19dJPohylgGNVWQAAAJg4AnndOAJ5
 3QAAAAtzc2gtZWQyNTUxOQAAACCHOHK/n6SEqk3zmUospMjvmFKFkoP19dJPohylgGNVWQ
 AAAEDHAmlg7DyqUT05PFBiPs77qBD5h6U1+RbZ38mEIVAWX4c4cr+fpISqTfOZSiykyO+Y
 UoWSg/X10k+iHKWAY1VZAAAAEmxob2x6bmFnZWxAYW5hcmNoeQECAw==
-        -----END OPENSSH PRIVATE KEY-----");
+        -----END OPENSSH PRIVATE KEY-----",
+        );
+
+        let vc = String::from("SSH-2.0-OpenSSH_7.9").as_bytes().to_vec();
+        let vs = String::from("SSH-2.0-rssh-0.1.0").as_bytes().to_vec();
 
         let mut curve_rand = OsRng::new().unwrap();
         let client_secret_curve = x25519_dalek::generate_secret(&mut curve_rand);
@@ -170,9 +155,6 @@ UoWSg/X10k+iHKWAY1VZAAAAEmxob2x6bmFnZWxAYW5hcmNoeQECAw==
 
         let server_secret_curve = x25519_dalek::generate_secret(&mut curve_rand);
         let f = x25519_dalek::generate_public(&server_secret_curve);
-
-        let vc = String::from("SSH-2.0-OpenSSH_7.9").as_bytes().to_vec();
-        let vs = String::from("SSH-2.0-rssh-0.1.0").as_bytes().to_vec();
 
         let ic = KexInit::build();
         let is = KexInit::build();
@@ -190,7 +172,9 @@ UoWSg/X10k+iHKWAY1VZAAAAEmxob2x6bmFnZWxAYW5hcmNoeQECAw==
             },
         };
 
-        let (ed25519_private, ks) = kex_dh.parse_ed25519(server_ed25519);
+        let ed25519 = Ed25519Key::from_string(server_ed25519).unwrap();
+        let ed25519_private = ed25519.private();
+        let ks = ed25519.public();
         let k = x25519_dalek::diffie_hellman(&server_secret_curve, &e.as_bytes());
 
         let server_hash = kex_dh.hash(ks.to_vec(), f.as_bytes().to_vec(), k.to_vec());
@@ -215,15 +199,15 @@ UoWSg/X10k+iHKWAY1VZAAAAEmxob2x6bmFnZWxAYW5hcmNoeQECAw==
             .write_u32(f.as_bytes().len() as u32)
             .write_vec(f.as_bytes().to_vec()) // f
             .write_u32(client_dh.len() as u32)
-            .write_vec(client_dh.to_vec()) // K
+            .write_mpint(client_dh.to_vec()) // K
             .build();
 
         let mut hasher = Sha256::new();
         hasher.input(&hash_builder);
 
         let client_hash = hasher.result().as_slice().to_vec();
-        assert_eq!(client_hash, server_hash);
         assert_eq!(client_dh, server_dh);
+        assert_eq!(client_hash, server_hash);
         assert!(crypto::ed25519::verify(&client_hash, &ks, &server_sign));
     }
 }
