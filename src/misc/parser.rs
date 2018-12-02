@@ -32,4 +32,15 @@ impl<'a> Parser<'a> {
         let length = self.read_u32()?;
         Ok(String::from_utf8(self.read_length(length as usize)?)?)
     }
+
+    #[allow(dead_code)]
+    pub fn debug(self) -> Self {
+        println!("{:?}", self.buffer);
+        self
+    }
+
+    pub fn skip(&mut self, length: usize) -> Result<(), Error> {
+        self.read_length(length)?;
+        Ok(())
+    }
 }

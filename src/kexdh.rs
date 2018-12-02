@@ -70,14 +70,15 @@ impl KexDh {
         // shared diffie hellman key, combining the own secret with the client public
         let k = x25519_dalek::diffie_hellman(&curve_secret, &e);
 
-        let ed25519 = Ed25519Key::new("./resources/id_ed25519").unwrap();
+        let mut ed25519 = Ed25519Key::new("./resources/id_ed25519").unwrap();
 
         let hash = self
             .clone()
             .hash(ed25519.public(), f.as_bytes().to_vec(), k.to_vec());
 
         // create a signature of H
-        let dh_signed = crypto::ed25519::signature(&hash, &ed25519.private()); // s
+        //let dh_signed = crypto::ed25519::signature(&hash, &ed25519.private()); // s
+        let dh_signed = crypto::ed25519::signature(&hash, &ed25519.sign()); // s
 
         let hash_algo = String::from("ssh-ed25519");
         let h = Builder::new()
