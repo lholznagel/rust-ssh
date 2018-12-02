@@ -1,14 +1,14 @@
-use crate::misc::{ algorithms::*, Builder, Parser };
+use crate::algorithms::*;
+use crate::misc::{Builder, Parser};
 use failure::Error;
 use rand::rngs::OsRng;
 use rand::Rng;
 
-// TODO randomg
 pub fn generate_cookie() -> [u8; 16] {
     let mut rand = OsRng::new().unwrap();
     let mut cookie: [u8; 16] = [0; 16];
     rand.try_fill(&mut cookie).unwrap();
-    return cookie
+    return cookie;
 }
 
 #[derive(Clone, Debug, Default)]
@@ -55,9 +55,11 @@ impl KexInit {
     }
 
     pub fn build() -> Vec<u8> {
-        let kex = KeyExchangeAlgorithm::to_vec(KeyExchangeAlgorithm::Curve25519Sha256AtLibsshDotOrg);
+        let kex =
+            KeyExchangeAlgorithm::to_vec(KeyExchangeAlgorithm::Curve25519Sha256AtLibsshDotOrg);
         let server_host_key = HostKeyAlgorithm::to_vec(HostKeyAlgorithm::SshEd25519);
-        let encryption_algorithm = EncryptionAlgorithm::to_vec(EncryptionAlgorithm::Chacha20Poly1305AtOpensshDotCom);
+        let encryption_algorithm =
+            EncryptionAlgorithm::to_vec(EncryptionAlgorithm::Chacha20Poly1305AtOpensshDotCom);
         let compression = CompressionAlgorithm::to_vec(CompressionAlgorithm::None);
 
         Builder::new()
@@ -97,17 +99,33 @@ impl KexInit {
             .write_u32(self.server_host_key_algorithms.len() as u32)
             .write_vec(self.server_host_key_algorithms.as_bytes().to_vec())
             .write_u32(self.encryption_algorithms_client_to_server.len() as u32)
-            .write_vec(self.encryption_algorithms_client_to_server.as_bytes().to_vec())
+            .write_vec(
+                self.encryption_algorithms_client_to_server
+                    .as_bytes()
+                    .to_vec(),
+            )
             .write_u32(self.encryption_algorithms_server_to_client.len() as u32)
-            .write_vec(self.encryption_algorithms_server_to_client.as_bytes().to_vec())
+            .write_vec(
+                self.encryption_algorithms_server_to_client
+                    .as_bytes()
+                    .to_vec(),
+            )
             .write_u32(self.mac_algorithms_client_to_server.len() as u32)
             .write_vec(self.mac_algorithms_client_to_server.as_bytes().to_vec())
             .write_u32(self.mac_algorithms_server_to_client.len() as u32)
             .write_vec(self.mac_algorithms_server_to_client.as_bytes().to_vec())
             .write_u32(self.compression_algorithms_client_to_server.len() as u32)
-            .write_vec(self.compression_algorithms_client_to_server.as_bytes().to_vec())
+            .write_vec(
+                self.compression_algorithms_client_to_server
+                    .as_bytes()
+                    .to_vec(),
+            )
             .write_u32(self.compression_algorithms_server_to_client.len() as u32)
-            .write_vec(self.compression_algorithms_server_to_client.as_bytes().to_vec())
+            .write_vec(
+                self.compression_algorithms_server_to_client
+                    .as_bytes()
+                    .to_vec(),
+            )
             .write_u32(self.languages_client_to_server.len() as u32)
             .write_vec(self.languages_client_to_server.as_bytes().to_vec())
             .write_u32(self.languages_server_to_client.len() as u32)

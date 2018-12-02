@@ -39,21 +39,6 @@ impl KexDh {
         })
     }
 
-    pub fn build_client() -> Vec<u8> {
-        // random gen for the curve
-        let mut curve_rand = OsRng::new().unwrap();
-        // generate the curve25519 secret
-        let curve_secret = x25519_dalek::generate_secret(&mut curve_rand);
-        // generate the curve25519 public
-        let curve_public = x25519_dalek::generate_public(&curve_secret);
-
-        Builder::new()
-            .write_u8(30) // message_code
-            .write_u32(32)
-            .write_vec(curve_public.as_bytes().to_vec()) // e
-            .as_payload()
-    }
-
     pub fn build(self) -> Vec<u8> {
         // convert e to a array of 32 elements
         let mut e = [0; 32];
@@ -70,7 +55,7 @@ impl KexDh {
         // shared diffie hellman key, combining the own secret with the client public
         let k = x25519_dalek::diffie_hellman(&curve_secret, &e);
 
-        let mut ed25519 = Ed25519Key::new("./resources/id_ed25519").unwrap();
+        let ed25519 = Ed25519Key::new("./resources/id_ed25519").unwrap();
 
         let hash = self
             .clone()
@@ -78,7 +63,7 @@ impl KexDh {
 
         // create a signature of H
         //let dh_signed = crypto::ed25519::signature(&hash, &ed25519.private()); // s
-        let dh_signed = crypto::ed25519::signature(&hash, &ed25519.sign()); // s
+        let dh_signed = crypto::ed25519::signature(&hash, &ed25519.signature()); // s
 
         let hash_algo = String::from("ssh-ed25519");
         let h = Builder::new()
@@ -174,12 +159,11 @@ UoWSg/X10k+iHKWAY1VZAAAAEmxob2x6bmFnZWxAYW5hcmNoeQECAw==
         };
 
         let ed25519 = Ed25519Key::from_string(server_ed25519).unwrap();
-        let ed25519_private = ed25519.private();
         let ks = ed25519.public();
         let k = x25519_dalek::diffie_hellman(&server_secret_curve, &e.as_bytes());
 
         let server_hash = kex_dh.hash(ks.to_vec(), f.as_bytes().to_vec(), k.to_vec());
-        let server_sign = crypto::ed25519::signature(&server_hash, &ed25519_private);
+        let server_sign = crypto::ed25519::signature(&server_hash, &ed25519.signature());
         let server_dh = x25519_dalek::diffie_hellman(&server_secret_curve, &e.as_bytes());
 
         // ---------- CLIENT ----------

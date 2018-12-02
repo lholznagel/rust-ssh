@@ -1,8 +1,14 @@
 use crate::kex::*;
 use crate::kexdh::*;
-use crate::protocol::*;
+use crate::version::*;
 use std::io::{Read, Write};
 use std::net::TcpStream;
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+struct Transport {
+    pub client_version: Version,
+    pub server_version: Version,
+}
 
 pub struct SSHServer {
     tcp_listener: TcpStream,
@@ -14,35 +20,28 @@ impl SSHServer {
     }
 
     pub fn accept(mut self) {
+        let mut transport = Transport::default();
+
         let mut protocol_exchange = false;
         let mut payload = false;
         let mut diffie = false;
 
-        let mut client_identifier = Vec::new();
-        let mut server_identifier = Vec::new();
         let mut client_kex = Vec::new();
         let mut server_kex = Vec::new();
 
         loop {
             let mut buffer = [0; 2048];
+
             self.tcp_listener.read(&mut buffer).unwrap();
 
             if !protocol_exchange {
-                match Protocol::parse(&buffer) {
+                match Version::parse(&buffer[0..256]) {
                     Ok(x) => {
-                        client_identifier = x
-                            .identifier
-                            .into_iter()
-                            .filter(|x| *x != 10 && *x != 13)
-                            .collect();
+                        transport.client_version = x;
+                        transport.server_version = Version::default();
 
-                        let response = Protocol::build();
-                        server_identifier = response
-                            .clone()
-                            .into_iter()
-                            .filter(|x| *x != 10 && *x != 13)
-                            .collect();
-                        self.tcp_listener.write(&response).unwrap();
+                        let response = Version::default();
+                        self.tcp_listener.write(&response.get_bytes()).unwrap();
                         protocol_exchange = true;
                         continue;
                     }
@@ -66,8 +65,8 @@ impl SSHServer {
                 match KexDh::parse(
                     &buffer,
                     DiffiHellman {
-                        client_identifier: client_identifier.clone(),
-                        server_identifier: server_identifier.clone(),
+                        client_identifier: transport.client_version.filtered(),
+                        server_identifier: transport.server_version.filtered(),
                         client_kex: client_kex.clone(),
                         server_kex: server_kex.clone(),
                     },
