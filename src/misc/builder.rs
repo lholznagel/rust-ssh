@@ -1,7 +1,3 @@
-use byteorder::{BigEndian, WriteBytesExt};
-use std::fmt;
-use std::fmt::{Display, Formatter};
-
 #[derive(Debug)]
 pub struct Builder {
     bytes: Vec<u8>,
@@ -13,12 +9,13 @@ impl Builder {
     }
 
     pub fn write_u8(mut self, value: u8) -> Self {
-        self.bytes.write_u8(value).unwrap();
+        self.bytes.push(value);
         self
     }
 
     pub fn write_u32(mut self, value: u32) -> Self {
-        self.bytes.write_u32::<BigEndian>(value).unwrap();
+        let bytes: [u8; 4] = unsafe { ::std::mem::transmute(value.to_be()) };
+        self.bytes.append(&mut bytes.to_vec());
         self
     }
 
@@ -28,19 +25,23 @@ impl Builder {
     }
 
     pub fn write_mpint(self, mut vec: Vec<u8>) -> Self {
-        let mut extra = Vec::new();
+        let mut extra = false;
 
         if vec[0] >= 128 {
-            extra.push(0);
+            extra = true;
         }
 
         if vec[0] == 0 {
             vec.remove(0);
         }
 
-        self.write_u32(vec.len() as u32 + extra.len() as u32)
-            .write_vec(extra)
-            .write_vec(vec)
+        if extra {
+            self.write_u32(vec.len() as u32 + 1)
+                .write_u8(0)
+                .write_vec(vec)
+        } else {
+            self.write_u32(vec.len() as u32).write_vec(vec)
+        }
     }
 
     pub fn build(self) -> Vec<u8> {
@@ -66,47 +67,13 @@ impl Builder {
     }
 }
 
-impl Display for Builder {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        writeln!(
-            f,
-            "  00  01  02  03  04  05  06  07  08  09  10  11  12  13  14  15 "
-        )?;
-        writeln!(
-            f,
-            "|---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---|"
-        )?;
-
-        let mut added = 0;
-        let inner_cursor = self.bytes.clone();
-        for val in inner_cursor {
-            match val {
-                n if n < 10 => write!(f, "|  {:?}", val)?,
-                n if n < 100 => write!(f, "| {:?}", val)?,
-                _ => write!(f, "|{:?}", val)?,
-            };
-
-            added += 1;
-            if added > 0 && added % 16 == 0 {
-                added = 0;
-                writeln!(f, "|")?;
-            }
-        }
-
-        write!(f, "|  0|")?;
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     pub fn test_mpint_0() {
-        let builder = Builder::new()
-            .write_mpint(vec![0])
-            .build();
+        let builder = Builder::new().write_mpint(vec![0]).build();
 
         assert_eq!(builder, hex::decode("00000000").unwrap());
     }
@@ -122,10 +89,17 @@ mod tests {
 
     #[test]
     pub fn test_mpint_2() {
-        let builder = Builder::new()
-            .write_mpint(vec![128])
-            .build();
+        let builder = Builder::new().write_mpint(vec![128]).build();
 
         assert_eq!(builder, hex::decode("000000020080").unwrap());
+    }
+
+    #[test]
+    pub fn test_u32() {
+        let builder = Builder::new().write_u32(1257868).build();
+        assert_eq!(builder, [0, 19, 49, 140]);
+
+        let builder = Builder::new().write_u32(167437900).build();
+        assert_eq!(builder, [9, 250, 230, 76]);
     }
 }

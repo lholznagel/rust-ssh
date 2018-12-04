@@ -4,12 +4,28 @@ use crate::version::*;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum State {
+    Version,
+    KeyExchangeInit,
+    DiffiHellmanKeyExchange,
+    Message,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        State::Version
+    }
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct Transport {
+    pub state: State,
     pub client_version: Version,
     pub server_version: Version,
 }
 
+#[derive(Debug)]
 pub struct SSHServer {
     tcp_listener: TcpStream,
 }
@@ -22,10 +38,6 @@ impl SSHServer {
     pub fn accept(mut self) {
         let mut transport = Transport::default();
 
-        let mut protocol_exchange = false;
-        let mut payload = false;
-        let mut diffie = false;
-
         let mut client_kex = Vec::new();
         let mut server_kex = Vec::new();
 
@@ -34,52 +46,59 @@ impl SSHServer {
 
             self.tcp_listener.read(&mut buffer).unwrap();
 
-            if !protocol_exchange {
-                match Version::parse(&buffer[0..256]) {
-                    Ok(x) => {
-                        transport.client_version = x;
-                        transport.server_version = Version::default();
+            match transport.state {
+                State::Version => {
+                    // version string will be max 256 chars long
+                    match Version::parse(&buffer[0..256]) {
+                        Ok(x) => {
+                            transport.client_version = x;
+                            transport.server_version = Version::default();
 
-                        let response = Version::default();
-                        self.tcp_listener.write(&response.get_bytes()).unwrap();
-                        protocol_exchange = true;
-                        continue;
-                    }
-                    _ => println!("Not Protocol"),
-                };
-            } else if !payload {
-                match KexInit::parse(&buffer) {
-                    Ok(client_msg_parsed) => {
-                        let response = KexInit::build();
+                            self.tcp_listener
+                                .write(&Version::default().get_bytes())
+                                .unwrap();
+                            transport.state = State::KeyExchangeInit;
+                            continue;
+                        }
+                        _ => panic!("Expected protocol version exchange."),
+                    };
+                }
+                State::KeyExchangeInit => {
+                    match KexInit::parse(&buffer) {
+                        Ok(client_msg_parsed) => {
+                            let response = KexInit::build();
 
-                        client_kex = client_msg_parsed.build_hash_payload();
-                        server_kex = KexInit::parse(&response).unwrap().build_hash_payload();
+                            client_kex = client_msg_parsed.build_hash_payload();
+                            server_kex = KexInit::parse(&response).unwrap().build_hash_payload();
 
-                        self.tcp_listener.write(&response).unwrap();
-                        payload = true;
-                        continue;
-                    }
-                    _ => println!("Not KexInit"),
-                };
-            } else if !diffie {
-                match KexDh::parse(
-                    &buffer,
-                    DiffiHellman {
-                        client_identifier: transport.client_version.filtered(),
-                        server_identifier: transport.server_version.filtered(),
-                        client_kex: client_kex.clone(),
-                        server_kex: server_kex.clone(),
-                    },
-                ) {
-                    Ok(x) => {
-                        self.tcp_listener.write(&x.build()).unwrap();
-                        diffie = true;
-                        continue;
-                    }
-                    _ => println!("Not KexDh"),
-                };
-            } else {
-                std::process::exit(0);
+                            self.tcp_listener.write(&response).unwrap();
+                            transport.state = State::DiffiHellmanKeyExchange;
+                            continue;
+                        }
+                        _ => println!("Not KexInit"),
+                    };
+                }
+                State::DiffiHellmanKeyExchange => {
+                    match KexDh::parse(
+                        &buffer,
+                        DiffiHellman {
+                            client_identifier: transport.client_version.filtered(),
+                            server_identifier: transport.server_version.filtered(),
+                            client_kex: client_kex.clone(),
+                            server_kex: server_kex.clone(),
+                        },
+                    ) {
+                        Ok(x) => {
+                            self.tcp_listener.write(&x.build()).unwrap();
+                            transport.state = State::Message;
+                            continue;
+                        }
+                        _ => println!("Not KexDh"),
+                    };
+                }
+                State::Message => {
+                    std::process::exit(0);
+                }
             }
         }
     }

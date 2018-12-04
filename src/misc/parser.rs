@@ -1,4 +1,3 @@
-use byteorder::{BigEndian, ReadBytesExt};
 use failure::Error;
 use std::io::{Cursor, Read};
 
@@ -15,11 +14,15 @@ impl<'a> Parser<'a> {
     }
 
     pub fn read_u8(&mut self) -> Result<u8, Error> {
-        Ok(self.buffer.read_u8()?)
+        let mut buffer = [0; 1];
+        self.buffer.read_exact(&mut buffer)?;
+        Ok(buffer[0])
     }
 
     pub fn read_u32(&mut self) -> Result<u32, Error> {
-        Ok(self.buffer.read_u32::<BigEndian>()?)
+        let mut buffer = [0; 4];
+        self.buffer.read_exact(&mut buffer)?;
+        Ok(unsafe { std::mem::transmute::<[u8; 4], u32>(buffer) }.to_be())
     }
 
     pub fn read_length(&mut self, length: usize) -> Result<Vec<u8>, Error> {
@@ -33,14 +36,22 @@ impl<'a> Parser<'a> {
         Ok(String::from_utf8(self.read_length(length as usize)?)?)
     }
 
-    #[allow(dead_code)]
-    pub fn debug(self) -> Self {
-        println!("{:?}", self.buffer);
-        self
-    }
-
     pub fn skip(&mut self, length: usize) -> Result<(), Error> {
         self.read_length(length)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn test_u32() {
+        let parser = Parser::new(&[0, 19, 49, 140]).read_u32().unwrap();
+        assert_eq!(parser, 1257868);
+
+        let builder = Parser::new(&[9, 250, 230, 76]).read_u32().unwrap();
+        assert_eq!(builder, 167437900);
     }
 }

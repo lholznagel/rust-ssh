@@ -4,7 +4,7 @@ use failure::Error;
 use rand::rngs::OsRng;
 use rand::Rng;
 
-pub fn generate_cookie() -> [u8; 16] {
+fn generate_cookie() -> [u8; 16] {
     let mut rand = OsRng::new().unwrap();
     let mut cookie: [u8; 16] = [0; 16];
     rand.try_fill(&mut cookie).unwrap();
