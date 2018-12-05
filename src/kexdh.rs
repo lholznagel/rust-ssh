@@ -46,13 +46,9 @@ impl KexDh {
             e[i] = self.e[i];
         }
 
-        // random gen for the curve
         let mut curve_rand = OsRng::new().unwrap();
-        // generate the curve25519 secret
         let curve_secret = x25519_dalek::generate_secret(&mut curve_rand);
-        // generate the curve25519 public
         let f = x25519_dalek::generate_public(&curve_secret);
-        // shared diffie hellman key, combining the own secret with the client public
         let k = x25519_dalek::diffie_hellman(&curve_secret, &e);
 
         let ed25519 = Ed25519Key::new("./resources/id_ed25519").unwrap();
@@ -62,7 +58,6 @@ impl KexDh {
             .hash(ed25519.public(), f.as_bytes().to_vec(), k.to_vec());
 
         // create a signature of H
-        //let dh_signed = crypto::ed25519::signature(&hash, &ed25519.private()); // s
         let dh_signed = crypto::ed25519::signature(&hash, &ed25519.signature()); // s
 
         let hash_algo = String::from("ssh-ed25519");
@@ -106,7 +101,7 @@ impl KexDh {
             .write_u32(f.len() as u32)
             .write_vec(f) // f
             .write_u32(k.len() as u32)
-            .write_mpint(k) // K
+            .write_vec(k) // K
             .build();
 
         let hasher = Sha256::digest(&builder);

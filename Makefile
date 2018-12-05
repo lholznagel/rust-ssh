@@ -6,4 +6,4 @@ server:
 	cargo run --example server
 
 ssh:
-	ssh 0.0.0.0 -p 1337 -vvv -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking=no"
+	ssh -vvv -o "UserKnownHostsFile /dev/null" -o "StrictHostKeyChecking=no" 0.0.0.0 -p 1337 -i ./resources/id_ed25519
