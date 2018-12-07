@@ -24,7 +24,6 @@ impl Builder {
         self
     }
 
-    #[allow(dead_code)]
     pub fn write_mpint(self, mut vec: Vec<u8>) -> Self {
         let mut extra = false;
 

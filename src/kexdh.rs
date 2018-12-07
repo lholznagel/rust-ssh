@@ -101,7 +101,7 @@ impl KexDh {
             .write_u32(f.len() as u32)
             .write_vec(f) // f
             .write_u32(k.len() as u32)
-            .write_vec(k) // K
+            .write_mpint(k) // K
             .build();
 
         let hasher = Sha256::digest(&builder);
