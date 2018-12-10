@@ -35,11 +35,11 @@ impl Ed25519Key {
         let kdf_name = parser.read_list().unwrap();
 
         if cipher_name != "none" {
-            panic!();
+            panic!("Cipher not supperted");
         }
 
         if kdf_name != "none" {
-            panic!();
+            panic!("KDF not supported");
         }
 
         let _ = parser.skip(4);
@@ -48,7 +48,7 @@ impl Ed25519Key {
         let ed25519 = parser.read_list().unwrap();
 
         if ed25519 != "ssh-ed25519" {
-            panic!();
+            panic!("Only ssh-ed25519 keys are supported");
         }
 
         let _ = parser.skip(3);

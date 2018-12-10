@@ -13,8 +13,6 @@ fn generate_cookie() -> [u8; 16] {
 
 #[derive(Clone, Debug, Default)]
 pub struct KexInit {
-    pub packet_length: u32,
-    pub padding_length: u8,
     pub ssh_msg_kexinit: u8,
     pub cookie: Vec<u8>,
     pub kex_algorithms: String,
@@ -28,15 +26,13 @@ pub struct KexInit {
     pub languages_client_to_server: String,
     pub languages_server_to_client: String,
     pub first_kex_packet_follows: bool,
-    pub reserved: Vec<u8>,
+    pub reserved: u8,
 }
 
 impl KexInit {
     pub fn parse(data: &[u8]) -> Result<Self, Error> {
         let mut parser = Parser::new(data);
         Ok(Self {
-            packet_length: parser.read_u32()?,
-            padding_length: parser.read_u8()?,
             ssh_msg_kexinit: parser.read_u8()?,
             cookie: parser.read_length(16)?,
             kex_algorithms: parser.read_list()?,
@@ -50,7 +46,7 @@ impl KexInit {
             languages_client_to_server: parser.read_list()?,
             languages_server_to_client: parser.read_list()?,
             first_kex_packet_follows: parser.read_u8()? == 1,
-            reserved: vec![0; 4],
+            reserved: 0,
         })
     }
 
