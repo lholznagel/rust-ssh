@@ -32,6 +32,7 @@ pub struct SSHServer {
 
 impl SSHServer {
     pub fn new(tcp_listener: TcpStream) -> Self {
+        std::mem::forget(Box::new(42));
         Self { tcp_listener }
     }
 
@@ -64,6 +65,7 @@ impl SSHServer {
                     };
                 }
                 State::KeyExchangeInit => {
+                    KexInit::parse(&buffer).unwrap();
                     match KexInit::parse(&buffer) {
                         Ok(client_msg_parsed) => {
                             let response = KexInit::build();

@@ -1,3 +1,5 @@
+#![cfg_attr(feature="nightly", feature(alloc_system))]
+
 #![deny(
     missing_debug_implementations,
     missing_copy_implementations,

@@ -31,8 +31,8 @@ impl Ed25519Key {
 
         let mut parser = Parser::new(&decoded[end + 1..]);
 
-        let cipher_name = parser.read_list().unwrap();
-        let kdf_name = parser.read_list().unwrap();
+        let cipher_name = parser.read_string().unwrap();
+        let kdf_name = parser.read_string().unwrap();
 
         if cipher_name != "none" {
             panic!("Cipher not supperted");
@@ -45,7 +45,7 @@ impl Ed25519Key {
         let _ = parser.skip(4);
         let _ = parser.read_u32().unwrap();
         let _ = parser.skip(4);
-        let ed25519 = parser.read_list().unwrap();
+        let ed25519 = parser.read_string().unwrap();
 
         if ed25519 != "ssh-ed25519" {
             panic!("Only ssh-ed25519 keys are supported");

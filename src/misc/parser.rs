@@ -31,7 +31,17 @@ impl<'a> Parser<'a> {
         Ok(buf)
     }
 
-    pub fn read_list(&mut self) -> Result<String, Error> {
+    pub fn read_list(&mut self) -> Result<Vec<String>, Error> {
+        let length = self.read_u32()?;
+        let list = String::from_utf8(self.read_length(length as usize)?)?;
+        let splitted = list
+            .split(",")
+            .map(|x| x.to_string())
+            .collect::<Vec<_>>();
+        Ok(splitted)
+    }
+
+    pub fn read_string(&mut self) -> Result<String, Error> {
         let length = self.read_u32()?;
         Ok(String::from_utf8(self.read_length(length as usize)?)?)
     }

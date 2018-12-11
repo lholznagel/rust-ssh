@@ -15,23 +15,27 @@ fn generate_cookie() -> [u8; 16] {
 pub struct KexInit {
     pub ssh_msg_kexinit: u8,
     pub cookie: Vec<u8>,
-    pub kex_algorithms: String,
-    pub server_host_key_algorithms: String,
-    pub encryption_algorithms_client_to_server: String,
-    pub encryption_algorithms_server_to_client: String,
-    pub mac_algorithms_client_to_server: String,
-    pub mac_algorithms_server_to_client: String,
-    pub compression_algorithms_client_to_server: String,
-    pub compression_algorithms_server_to_client: String,
-    pub languages_client_to_server: String,
-    pub languages_server_to_client: String,
+    pub kex_algorithms: Vec<String>,
+    pub server_host_key_algorithms: Vec<String>,
+    pub encryption_algorithms_client_to_server: Vec<String>,
+    pub encryption_algorithms_server_to_client: Vec<String>,
+    pub mac_algorithms_client_to_server: Vec<String>,
+    pub mac_algorithms_server_to_client: Vec<String>,
+    pub compression_algorithms_client_to_server: Vec<String>,
+    pub compression_algorithms_server_to_client: Vec<String>,
+    pub languages_client_to_server: Vec<String>,
+    pub languages_server_to_client: Vec<String>,
     pub first_kex_packet_follows: bool,
-    pub reserved: u8,
+    pub reserved: u32,
 }
 
 impl KexInit {
     pub fn parse(data: &[u8]) -> Result<Self, Error> {
         let mut parser = Parser::new(data);
+
+        parser.skip(4)?; // packet length
+        parser.skip(1)?; // padding
+
         Ok(Self {
             ssh_msg_kexinit: parser.read_u8()?,
             cookie: parser.read_length(16)?,
@@ -91,41 +95,45 @@ impl KexInit {
             .write_u8(20)
             .write_vec(self.cookie)
             .write_u32(self.kex_algorithms.len() as u32)
-            .write_vec(self.kex_algorithms.as_bytes().to_vec())
+            .write_vec(self.kex_algorithms.join(",").as_bytes().to_vec())
             .write_u32(self.server_host_key_algorithms.len() as u32)
-            .write_vec(self.server_host_key_algorithms.as_bytes().to_vec())
+            .write_vec(self.server_host_key_algorithms.join(",").as_bytes().to_vec())
             .write_u32(self.encryption_algorithms_client_to_server.len() as u32)
             .write_vec(
                 self.encryption_algorithms_client_to_server
+                    .join(",")
                     .as_bytes()
                     .to_vec(),
             )
             .write_u32(self.encryption_algorithms_server_to_client.len() as u32)
             .write_vec(
                 self.encryption_algorithms_server_to_client
+                    .join(",")
                     .as_bytes()
                     .to_vec(),
             )
             .write_u32(self.mac_algorithms_client_to_server.len() as u32)
-            .write_vec(self.mac_algorithms_client_to_server.as_bytes().to_vec())
+            .write_vec(self.mac_algorithms_client_to_server.join(",").as_bytes().to_vec())
             .write_u32(self.mac_algorithms_server_to_client.len() as u32)
-            .write_vec(self.mac_algorithms_server_to_client.as_bytes().to_vec())
+            .write_vec(self.mac_algorithms_server_to_client.join(",").as_bytes().to_vec())
             .write_u32(self.compression_algorithms_client_to_server.len() as u32)
             .write_vec(
                 self.compression_algorithms_client_to_server
+                    .join(",")
                     .as_bytes()
                     .to_vec(),
             )
             .write_u32(self.compression_algorithms_server_to_client.len() as u32)
             .write_vec(
                 self.compression_algorithms_server_to_client
+                    .join(",")
                     .as_bytes()
                     .to_vec(),
             )
             .write_u32(self.languages_client_to_server.len() as u32)
-            .write_vec(self.languages_client_to_server.as_bytes().to_vec())
+            .write_vec(self.languages_client_to_server.join(",").as_bytes().to_vec())
             .write_u32(self.languages_server_to_client.len() as u32)
-            .write_vec(self.languages_server_to_client.as_bytes().to_vec())
+            .write_vec(self.languages_server_to_client.join(",").as_bytes().to_vec())
             .write_u8(self.first_kex_packet_follows as u8)
             .write_u32(0)
             .build()
