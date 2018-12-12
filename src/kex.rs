@@ -11,7 +11,7 @@ fn generate_cookie() -> [u8; 16] {
     return cookie;
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct KexInit {
     pub ssh_msg_kexinit: u8,
     pub cookie: Vec<u8>,
@@ -53,89 +53,71 @@ impl KexInit {
             reserved: 0,
         })
     }
+    
+    pub fn build(self) -> Vec<u8> {
+        let kex_algorithms = self.kex_algorithms.join(",").as_bytes().to_vec();
+        let server_host_key_algorithms = self.server_host_key_algorithms.join(",").as_bytes().to_vec();
+        let encryption_algorithms_client_to_server = self.encryption_algorithms_client_to_server.join(",").as_bytes().to_vec();
+        let encryption_algorithms_server_to_client = self.encryption_algorithms_server_to_client.join(",").as_bytes().to_vec();
+        let mac_algorithms_client_to_server = self.mac_algorithms_client_to_server.join(",").as_bytes().to_vec();
+        let mac_algorithms_server_to_client = self.mac_algorithms_server_to_client.join(",").as_bytes().to_vec();
+        let compression_algorithms_client_to_server = self.compression_algorithms_client_to_server.join(",").as_bytes().to_vec();
+        let compression_algorithms_server_to_client = self.compression_algorithms_server_to_client.join(",").as_bytes().to_vec();
+        let languages_client_to_server = self.languages_client_to_server.join(",").as_bytes().to_vec();
+        let languages_server_to_client = self.languages_server_to_client.join(",").as_bytes().to_vec();
 
-    pub fn build() -> Vec<u8> {
-        let kex =
-            KeyExchangeAlgorithm::to_vec(KeyExchangeAlgorithm::Curve25519Sha256AtLibsshDotOrg);
-        let server_host_key = HostKeyAlgorithm::to_vec(HostKeyAlgorithm::SshEd25519);
-        let encryption_algorithm =
-            EncryptionAlgorithm::to_vec(EncryptionAlgorithm::Chacha20Poly1305AtOpensshDotCom);
-        let compression = CompressionAlgorithm::to_vec(CompressionAlgorithm::None);
-
-        Builder::new()
-            .write_u8(20)
-            .write_vec(generate_cookie().to_vec())
-            .write_u32(kex.len() as u32)
-            .write_vec(kex)
-            .write_u32(server_host_key.len() as u32)
-            .write_vec(server_host_key)
-            .write_u32(encryption_algorithm.len() as u32)
-            .write_vec(encryption_algorithm.clone())
-            .write_u32(encryption_algorithm.len() as u32)
-            .write_vec(encryption_algorithm)
-            .write_u32(0)
-            .write_u32(0)
-            .write_u32(compression.len() as u32)
-            .write_vec(compression.clone())
-            .write_u32(compression.len() as u32)
-            .write_vec(compression)
-            // language
-            .write_u32(0)
-            // language
-            .write_u32(0)
-            // first kex packet
-            .write_u8(0)
-            // reserved
-            .write_u32(0)
-            .as_payload()
-    }
-
-    pub fn build_hash_payload(self) -> Vec<u8> {
         Builder::new()
             .write_u8(20)
             .write_vec(self.cookie)
-            .write_u32(self.kex_algorithms.len() as u32)
-            .write_vec(self.kex_algorithms.join(",").as_bytes().to_vec())
-            .write_u32(self.server_host_key_algorithms.len() as u32)
-            .write_vec(self.server_host_key_algorithms.join(",").as_bytes().to_vec())
-            .write_u32(self.encryption_algorithms_client_to_server.len() as u32)
-            .write_vec(
-                self.encryption_algorithms_client_to_server
-                    .join(",")
-                    .as_bytes()
-                    .to_vec(),
-            )
-            .write_u32(self.encryption_algorithms_server_to_client.len() as u32)
-            .write_vec(
-                self.encryption_algorithms_server_to_client
-                    .join(",")
-                    .as_bytes()
-                    .to_vec(),
-            )
-            .write_u32(self.mac_algorithms_client_to_server.len() as u32)
-            .write_vec(self.mac_algorithms_client_to_server.join(",").as_bytes().to_vec())
-            .write_u32(self.mac_algorithms_server_to_client.len() as u32)
-            .write_vec(self.mac_algorithms_server_to_client.join(",").as_bytes().to_vec())
-            .write_u32(self.compression_algorithms_client_to_server.len() as u32)
-            .write_vec(
-                self.compression_algorithms_client_to_server
-                    .join(",")
-                    .as_bytes()
-                    .to_vec(),
-            )
-            .write_u32(self.compression_algorithms_server_to_client.len() as u32)
-            .write_vec(
-                self.compression_algorithms_server_to_client
-                    .join(",")
-                    .as_bytes()
-                    .to_vec(),
-            )
-            .write_u32(self.languages_client_to_server.len() as u32)
-            .write_vec(self.languages_client_to_server.join(",").as_bytes().to_vec())
-            .write_u32(self.languages_server_to_client.len() as u32)
-            .write_vec(self.languages_server_to_client.join(",").as_bytes().to_vec())
+            .write_u32(kex_algorithms.len() as u32)
+            .write_vec(kex_algorithms)
+            .write_u32(server_host_key_algorithms.len() as u32)
+            .write_vec(server_host_key_algorithms)
+            .write_u32(encryption_algorithms_client_to_server.len() as u32)
+            .write_vec(encryption_algorithms_client_to_server)
+            .write_u32(encryption_algorithms_server_to_client.len() as u32)
+            .write_vec(encryption_algorithms_server_to_client)
+            .write_u32(mac_algorithms_client_to_server.len() as u32)
+            .write_vec(mac_algorithms_client_to_server)
+            .write_u32(mac_algorithms_server_to_client.len() as u32)
+            .write_vec(mac_algorithms_server_to_client)
+            .write_u32(compression_algorithms_client_to_server.len() as u32)
+            .write_vec(compression_algorithms_client_to_server)
+            .write_u32(compression_algorithms_server_to_client.len() as u32)
+            .write_vec(compression_algorithms_server_to_client)
+            .write_u32(languages_client_to_server.len() as u32)
+            .write_vec(languages_client_to_server)
+            .write_u32(languages_server_to_client.len() as u32)
+            .write_vec(languages_server_to_client)
             .write_u8(self.first_kex_packet_follows as u8)
             .write_u32(0)
             .build()
+    }
+
+    pub fn build_as_payload(self) -> Vec<u8> {
+        Builder::new()
+            .write_vec(self.build())
+            .as_payload()
+    }
+}
+
+impl Default for KexInit {
+    fn default() -> KexInit {
+        Self {
+            ssh_msg_kexinit: 20,
+            cookie: generate_cookie().to_vec(),
+            kex_algorithms: vec![KeyExchangeAlgorithm::to_string(KeyExchangeAlgorithm::Curve25519Sha256AtLibsshDotOrg)],
+            server_host_key_algorithms: vec![HostKeyAlgorithm::to_string(HostKeyAlgorithm::SshEd25519)],
+            encryption_algorithms_client_to_server: vec![EncryptionAlgorithm::to_string(EncryptionAlgorithm::Chacha20Poly1305AtOpensshDotCom)],
+            encryption_algorithms_server_to_client: vec![EncryptionAlgorithm::to_string(EncryptionAlgorithm::Chacha20Poly1305AtOpensshDotCom)],
+            mac_algorithms_client_to_server: Vec::new(),
+            mac_algorithms_server_to_client: Vec::new(),
+            compression_algorithms_client_to_server: vec![CompressionAlgorithm::to_string(CompressionAlgorithm::None)],
+            compression_algorithms_server_to_client: vec![CompressionAlgorithm::to_string(CompressionAlgorithm::None)],
+            languages_client_to_server: Vec::new(),
+            languages_server_to_client: Vec::new(),
+            first_kex_packet_follows: false,
+            reserved: 0,
+        }
     }
 }

@@ -8,7 +8,7 @@
     unstable_features,
     unused_import_braces,
     unused_qualifications,
-    warnings
+    //warnings
 )]
 
 mod algorithms;

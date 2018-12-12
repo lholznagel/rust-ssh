@@ -68,11 +68,10 @@ impl SSHServer {
                     KexInit::parse(&buffer).unwrap();
                     match KexInit::parse(&buffer) {
                         Ok(client_msg_parsed) => {
-                            let response = KexInit::build();
+                            client_kex = client_msg_parsed.build();
+                            server_kex = KexInit::default().build();
 
-                            client_kex = client_msg_parsed.build_hash_payload();
-                            server_kex = KexInit::parse(&response).unwrap().build_hash_payload();
-
+                            let response = KexInit::default().build_as_payload();
                             self.tcp_listener.write(&response).unwrap();
                             transport.state = State::DiffiHellmanKeyExchange;
                             continue;

@@ -137,8 +137,8 @@ UoWSg/X10k+iHKWAY1VZAAAAEmxob2x6bmFnZWxAYW5hcmNoeQECAw==
         let server_secret_curve = x25519_dalek::generate_secret(&mut curve_rand);
         let f = x25519_dalek::generate_public(&server_secret_curve);
 
-        let ic = KexInit::build();
-        let is = KexInit::build();
+        let ic = KexInit::default().build_as_payload();
+        let is = KexInit::default().build_as_payload();
 
         let kex_dh = KexDh {
             packet_length: 0,
