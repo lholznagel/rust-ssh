@@ -56,7 +56,7 @@ impl SSHServer {
                             transport.server_version = Version::default();
 
                             self.tcp_listener
-                                .write(&Version::default().get_bytes())
+                                .write_all(&Version::default().get_bytes())
                                 .unwrap();
                             transport.state = State::KeyExchangeInit;
                             continue;
@@ -72,7 +72,7 @@ impl SSHServer {
                             server_kex = KexInit::default().build();
 
                             let response = KexInit::default().build_as_payload();
-                            self.tcp_listener.write(&response).unwrap();
+                            self.tcp_listener.write_all(&response).unwrap();
                             transport.state = State::DiffiHellmanKeyExchange;
                             continue;
                         }
@@ -90,7 +90,7 @@ impl SSHServer {
                         },
                     ) {
                         Ok(x) => {
-                            self.tcp_listener.write(&x.build()).unwrap();
+                            self.tcp_listener.write_all(&x.build()).unwrap();
                             transport.state = State::Message;
                             continue;
                         }

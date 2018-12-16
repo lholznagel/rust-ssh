@@ -34,11 +34,13 @@ impl<'a> Parser<'a> {
     pub fn read_list(&mut self) -> Result<Vec<String>, Error> {
         let length = self.read_u32()?;
         let list = String::from_utf8(self.read_length(length as usize)?)?;
-        let splitted = list
-            .split(",")
-            .map(|x| x.to_string())
-            .collect::<Vec<_>>();
-        Ok(splitted)
+
+        if !list.is_empty() {
+            let splitted = list.split(',').map(|x| x.to_string()).collect::<Vec<_>>();
+            Ok(splitted)
+        } else {
+            Ok(Vec::new())
+        }
     }
 
     pub fn read_string(&mut self) -> Result<String, Error> {
