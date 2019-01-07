@@ -130,6 +130,7 @@ impl KexInit {
             .build()
     }
 
+    /// build the struct and adds packet length and padding
     pub fn build_as_payload(self) -> Vec<u8> {
         Builder::new().write_vec(self.build()).as_payload()
     }
@@ -141,24 +142,24 @@ impl Default for KexInit {
             ssh_msg_kexinit: 20,
             cookie: generate_cookie().to_vec(),
             kex_algorithms: vec![KeyExchangeAlgorithm::to_string(
-                KeyExchangeAlgorithm::Curve25519Sha256AtLibsshDotOrg,
+                &KeyExchangeAlgorithm::Curve25519Sha256AtLibsshDotOrg,
             )],
             server_host_key_algorithms: vec![HostKeyAlgorithm::to_string(
-                HostKeyAlgorithm::SshEd25519,
+                &HostKeyAlgorithm::SshEd25519,
             )],
             encryption_algorithms_client_to_server: vec![EncryptionAlgorithm::to_string(
-                EncryptionAlgorithm::Chacha20Poly1305AtOpensshDotCom,
+                &EncryptionAlgorithm::Chacha20Poly1305AtOpensshDotCom,
             )],
             encryption_algorithms_server_to_client: vec![EncryptionAlgorithm::to_string(
-                EncryptionAlgorithm::Chacha20Poly1305AtOpensshDotCom,
+                &EncryptionAlgorithm::Chacha20Poly1305AtOpensshDotCom,
             )],
             mac_algorithms_client_to_server: Vec::new(),
             mac_algorithms_server_to_client: Vec::new(),
             compression_algorithms_client_to_server: vec![CompressionAlgorithm::to_string(
-                CompressionAlgorithm::None,
+                &CompressionAlgorithm::None,
             )],
             compression_algorithms_server_to_client: vec![CompressionAlgorithm::to_string(
-                CompressionAlgorithm::None,
+                &CompressionAlgorithm::None,
             )],
             languages_client_to_server: Vec::new(),
             languages_server_to_client: Vec::new(),

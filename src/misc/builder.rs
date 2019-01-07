@@ -25,11 +25,7 @@ impl Builder {
     }
 
     pub fn write_mpint(self, mut vec: Vec<u8>) -> Self {
-        let mut extra = false;
-
-        if vec[0] >= 128 {
-            extra = true;
-        }
+        let extra = vec[0] >= 128;
 
         if vec[0] == 0 {
             vec.remove(0);
@@ -48,7 +44,7 @@ impl Builder {
         self.bytes
     }
 
-    pub fn as_payload(self) -> Vec<u8> {
+    pub fn as_payload(&self) -> Vec<u8> {
         // packet length + padding
         let mut padding = ((4 + 1 + self.bytes.len()) % 8) as u8;
         if padding < 4 {
@@ -59,9 +55,9 @@ impl Builder {
 
         Builder::new()
             // padding field + payload
-            .write_u32(1 + self.bytes.len() as u32 + padding as u32)
+            .write_u32(1 + self.bytes.len() as u32 + u32::from(padding))
             .write_u8(padding)
-            .write_vec(self.bytes)
+            .write_vec(self.bytes.clone())
             .write_vec(vec![0; padding as usize])
             .build()
     }
@@ -96,10 +92,10 @@ mod tests {
 
     #[test]
     pub fn test_u32() {
-        let builder = Builder::new().write_u32(1257868).build();
+        let builder = Builder::new().write_u32(1_257_868).build();
         assert_eq!(builder, [0, 19, 49, 140]);
 
-        let builder = Builder::new().write_u32(167437900).build();
+        let builder = Builder::new().write_u32(167_437_900).build();
         assert_eq!(builder, [9, 250, 230, 76]);
     }
 }

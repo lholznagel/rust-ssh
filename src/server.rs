@@ -45,7 +45,8 @@ impl SSHServer {
         loop {
             let mut buffer = [0; 2048];
 
-            self.tcp_listener.read(&mut buffer).unwrap();
+            // TODO: future: use peek
+            let _ = self.tcp_listener.read(&mut buffer).unwrap();
 
             match transport.state {
                 State::Version => {

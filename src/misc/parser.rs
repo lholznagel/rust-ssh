@@ -61,9 +61,9 @@ mod tests {
     #[test]
     pub fn test_u32() {
         let parser = Parser::new(&[0, 19, 49, 140]).read_u32().unwrap();
-        assert_eq!(parser, 1257868);
+        assert_eq!(parser, 1_257_868);
 
         let builder = Parser::new(&[9, 250, 230, 76]).read_u32().unwrap();
-        assert_eq!(builder, 167437900);
+        assert_eq!(builder, 167_437_900);
     }
 }

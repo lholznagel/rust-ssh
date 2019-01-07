@@ -5,17 +5,13 @@ pub enum KeyExchangeAlgorithm {
 }
 
 impl KeyExchangeAlgorithm {
-    pub fn to_string(e: KeyExchangeAlgorithm) -> String {
+    pub fn to_string(e: &KeyExchangeAlgorithm) -> String {
         match e {
             KeyExchangeAlgorithm::Curve25519Sha256AtLibsshDotOrg => {
                 String::from("curve25519-sha256@libssh.org")
             }
             KeyExchangeAlgorithm::Unknown => String::from(""),
         }
-    }
-
-    pub fn to_vec(e: KeyExchangeAlgorithm) -> Vec<u8> {
-        KeyExchangeAlgorithm::to_string(e).as_bytes().to_vec()
     }
 
     #[allow(dead_code)]
@@ -34,15 +30,11 @@ pub enum HostKeyAlgorithm {
 }
 
 impl HostKeyAlgorithm {
-    pub fn to_string(e: HostKeyAlgorithm) -> String {
+    pub fn to_string(e: &HostKeyAlgorithm) -> String {
         match e {
             HostKeyAlgorithm::SshEd25519 => String::from("ssh-ed25519"),
             HostKeyAlgorithm::Unknown => String::from(""),
         }
-    }
-
-    pub fn to_vec(e: HostKeyAlgorithm) -> Vec<u8> {
-        HostKeyAlgorithm::to_string(e).as_bytes().to_vec()
     }
 
     #[allow(dead_code)]
@@ -61,17 +53,13 @@ pub enum EncryptionAlgorithm {
 }
 
 impl EncryptionAlgorithm {
-    pub fn to_string(e: EncryptionAlgorithm) -> String {
+    pub fn to_string(e: &EncryptionAlgorithm) -> String {
         match e {
             EncryptionAlgorithm::Chacha20Poly1305AtOpensshDotCom => {
                 String::from("chacha20-poly1305@openssh.com")
             }
             EncryptionAlgorithm::Unknown => String::from(""),
         }
-    }
-
-    pub fn to_vec(e: EncryptionAlgorithm) -> Vec<u8> {
-        EncryptionAlgorithm::to_string(e).as_bytes().to_vec()
     }
 
     #[allow(dead_code)]
@@ -89,14 +77,10 @@ pub enum CompressionAlgorithm {
 }
 
 impl CompressionAlgorithm {
-    pub fn to_string(e: CompressionAlgorithm) -> String {
+    pub fn to_string(e: &CompressionAlgorithm) -> String {
         match e {
             CompressionAlgorithm::None => String::from("none"),
         }
-    }
-
-    pub fn to_vec(e: CompressionAlgorithm) -> Vec<u8> {
-        CompressionAlgorithm::to_string(e).as_bytes().to_vec()
     }
 }
 
@@ -115,16 +99,8 @@ mod tests {
     #[test]
     pub fn to_str_curve25519() {
         assert_eq!(
-            KeyExchangeAlgorithm::to_string(KeyExchangeAlgorithm::Curve25519Sha256AtLibsshDotOrg),
+            KeyExchangeAlgorithm::to_string(&KeyExchangeAlgorithm::Curve25519Sha256AtLibsshDotOrg),
             "curve25519-sha256@libssh.org"
-        );
-    }
-
-    #[test]
-    pub fn to_vec_curve25519() {
-        assert_eq!(
-            KeyExchangeAlgorithm::to_vec(KeyExchangeAlgorithm::Curve25519Sha256AtLibsshDotOrg),
-            "curve25519-sha256@libssh.org".as_bytes().to_vec()
         );
     }
 
@@ -136,16 +112,8 @@ mod tests {
     #[test]
     pub fn to_string_ed25519() {
         assert_eq!(
-            HostKeyAlgorithm::to_string(HostKeyAlgorithm::SshEd25519),
+            HostKeyAlgorithm::to_string(&HostKeyAlgorithm::SshEd25519),
             "ssh-ed25519"
-        );
-    }
-
-    #[test]
-    pub fn to_vec_ed25519() {
-        assert_eq!(
-            HostKeyAlgorithm::to_vec(HostKeyAlgorithm::SshEd25519),
-            "ssh-ed25519".as_bytes().to_vec()
         );
     }
 
@@ -160,16 +128,8 @@ mod tests {
     #[test]
     pub fn to_string_chacha_poly1305() {
         assert_eq!(
-            EncryptionAlgorithm::to_string(EncryptionAlgorithm::Chacha20Poly1305AtOpensshDotCom),
+            EncryptionAlgorithm::to_string(&EncryptionAlgorithm::Chacha20Poly1305AtOpensshDotCom),
             "chacha20-poly1305@openssh.com"
-        );
-    }
-
-    #[test]
-    pub fn to_vec_chacha_poly1305() {
-        assert_eq!(
-            EncryptionAlgorithm::to_vec(EncryptionAlgorithm::Chacha20Poly1305AtOpensshDotCom),
-            "chacha20-poly1305@openssh.com".as_bytes().to_vec()
         );
     }
 }

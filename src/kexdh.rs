@@ -42,9 +42,7 @@ impl KexDh {
     pub fn build(self) -> Vec<u8> {
         // convert e to a array of 32 elements
         let mut e = [0; 32];
-        for i in 0..32 {
-            e[i] = self.e[i];
-        }
+        e[..32].clone_from_slice(&self.e[..32]);
 
         let mut curve_rand = OsRng::new().unwrap();
         let curve_secret = x25519_dalek::generate_secret(&mut curve_rand);
