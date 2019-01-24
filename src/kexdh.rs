@@ -44,16 +44,18 @@ impl KexDh {
         let mut e = [0; 32];
         e[..32].clone_from_slice(&self.e[..32]);
 
+        let e = x25519_dalek::EphemeralPublic::from(e);
+
         let mut curve_rand = OsRng::new().unwrap();
-        let curve_secret = x25519_dalek::generate_secret(&mut curve_rand);
-        let f = x25519_dalek::generate_public(&curve_secret);
-        let k = x25519_dalek::diffie_hellman(&curve_secret, &e);
+        let curve_secret = x25519_dalek::EphemeralSecret::new(&mut curve_rand);
+        let f = x25519_dalek::EphemeralPublic::from(&curve_secret);
+        let k = x25519_dalek::EphemeralSecret::diffie_hellman(curve_secret, &e);
 
         let ed25519 = Ed25519Key::new("./resources/id_ed25519").unwrap();
 
         let hash = self
             .clone()
-            .hash(ed25519.public(), f.as_bytes().to_vec(), k.to_vec());
+            .hash(ed25519.public(), f.as_bytes().to_vec(), k.as_bytes().to_vec());
 
         // create a signature of H
         let dh_signed = crypto::ed25519::signature(&hash, &ed25519.signature()); // s
@@ -75,8 +77,8 @@ impl KexDh {
             .write_vec(String::from("ssh-ed25519").as_bytes().to_vec())
             .write_u32(ed25519.public().len() as u32)
             .write_vec(ed25519.public()) // K_S
-            .write_u32(f.to_bytes().len() as u32)
-            .write_vec(f.to_bytes().to_vec()) // f
+            .write_u32(f.as_bytes().len() as u32)
+            .write_vec(f.as_bytes().to_vec()) // f
             .write_u32(h.len() as u32)
             .write_vec(h) // s
             .as_payload()
@@ -129,11 +131,11 @@ UoWSg/X10k+iHKWAY1VZAAAAEmxob2x6bmFnZWxAYW5hcmNoeQECAw==
         let vs = String::from("SSH-2.0-rssh-0.1.0").as_bytes().to_vec();
 
         let mut curve_rand = OsRng::new().unwrap();
-        let client_secret_curve = x25519_dalek::generate_secret(&mut curve_rand);
-        let e = x25519_dalek::generate_public(&client_secret_curve);
+        let client_secret_curve = x25519_dalek::EphemeralSecret::new(&mut curve_rand);
+        let e = x25519_dalek::EphemeralPublic::from(&client_secret_curve);
 
-        let server_secret_curve = x25519_dalek::generate_secret(&mut curve_rand);
-        let f = x25519_dalek::generate_public(&server_secret_curve);
+        let server_secret_curve = x25519_dalek::EphemeralSecret::new(&mut curve_rand);
+        let f = x25519_dalek::EphemeralPublic::from(&server_secret_curve);
 
         let ic = KexInit::default().build_as_payload();
         let is = KexInit::default().build_as_payload();
@@ -153,14 +155,15 @@ UoWSg/X10k+iHKWAY1VZAAAAEmxob2x6bmFnZWxAYW5hcmNoeQECAw==
 
         let ed25519 = Ed25519Key::from_string(server_ed25519).unwrap();
         let ks = ed25519.public();
-        let k = x25519_dalek::diffie_hellman(&server_secret_curve, &e.as_bytes());
+        let k = x25519_dalek::EphemeralSecret::diffie_hellman(server_secret_curve, &e);
 
-        let server_hash = kex_dh.hash(ks.to_vec(), f.as_bytes().to_vec(), k.to_vec());
+        let server_hash = kex_dh.hash(ks.to_vec(), f.as_bytes().to_vec(), k.as_bytes().to_vec());
         let server_sign = crypto::ed25519::signature(&server_hash, &ed25519.signature());
-        let server_dh = x25519_dalek::diffie_hellman(&server_secret_curve, &e.as_bytes());
+        let server_dh = k.as_bytes();
 
         // ---------- CLIENT ----------
-        let client_dh = x25519_dalek::diffie_hellman(&client_secret_curve, &f.as_bytes());
+        let client_dh = x25519_dalek::EphemeralSecret::diffie_hellman(client_secret_curve, &f);
+        let client_dh = client_dh.as_bytes();
         let hash_builder = Builder::new()
             .write_u32(vc.len() as u32)
             .write_vec(vc) // V_C
