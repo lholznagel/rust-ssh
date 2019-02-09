@@ -40,10 +40,9 @@ impl KexDh {
     }
 
     pub fn build(self) -> Vec<u8> {
-        // convert e to a array of 32 elements
+        // convert e to an array with a fixed length of 32
         let mut e = [0; 32];
         e[..32].clone_from_slice(&self.e[..32]);
-
         let e = x25519_dalek::EphemeralPublic::from(e);
 
         let mut curve_rand = OsRng::new().unwrap();
@@ -52,16 +51,17 @@ impl KexDh {
         let k = x25519_dalek::EphemeralSecret::diffie_hellman(curve_secret, &e);
 
         let ed25519 = Ed25519Key::new("./resources/id_ed25519").unwrap();
-
-        let hash = self
-            .clone()
-            .hash(ed25519.public(), f.as_bytes().to_vec(), k.as_bytes().to_vec());
+        let h = self.clone().hash(
+            ed25519.public(),
+            f.as_bytes().to_vec(),
+            k.as_bytes().to_vec(),
+        );
 
         // create a signature of H
-        let dh_signed = crypto::ed25519::signature(&hash, &ed25519.signature()); // s
+        let dh_signed = crypto::ed25519::signature(&h, &ed25519.signature()); // s
 
         let hash_algo = String::from("ssh-ed25519");
-        let h = Builder::new()
+        let s = Builder::new()
             .write_u32(hash_algo.len() as u32)
             .write_vec(hash_algo.as_bytes().to_vec())
             .write_u32(dh_signed.len() as u32)
@@ -79,8 +79,8 @@ impl KexDh {
             .write_vec(ed25519.public()) // K_S
             .write_u32(f.as_bytes().len() as u32)
             .write_vec(f.as_bytes().to_vec()) // f
-            .write_u32(h.len() as u32)
-            .write_vec(h) // s
+            .write_u32(s.len() as u32)
+            .write_vec(s) // s
             .as_payload()
     }
 

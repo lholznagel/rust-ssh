@@ -50,7 +50,7 @@ impl KexInit {
             languages_client_to_server: parser.read_list()?,
             languages_server_to_client: parser.read_list()?,
             first_kex_packet_follows: parser.read_u8()? == 1,
-            reserved: 0,
+            reserved: parser.read_u32()?,
         })
     }
 
@@ -277,7 +277,7 @@ mod tests {
         let hex_query = hex::decode(hex_query).unwrap();
         let kex_init = KexInit::parse(&hex_query).unwrap().build();
 
-        // exclude lenght and padding
+        // exclude length and padding
         assert_eq!(kex_init, hex_query[5..(hex_query.len() - 4)].to_vec());
     }
 }

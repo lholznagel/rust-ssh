@@ -58,7 +58,7 @@ impl SSHServer {
             } else {
                 let packet_length = unsafe { std::mem::transmute::<[u8; 4], u32>(buffer) }.to_be();
                 let mut message_buffer = vec![0; packet_length as usize];
-                let _ = self.tcp_listener.read_exact(&mut message_buffer).unwrap();
+                self.tcp_listener.read_exact(&mut message_buffer).unwrap();
                 message.append(&mut buffer.to_vec());
                 message.append(&mut message_buffer.to_vec());
             }

@@ -3,7 +3,11 @@ use failure::{format_err, Error};
 /// Represents a SSH Version string
 ///
 /// Example pattern:
-/// `SSH-2.0-billsSSH_3.6.3q3<CR><LF>`
+/// `SSH-2.0-billsSSH_3.6.3q3 <CR> <LF>`
+///
+/// or
+///
+/// `SSH-2.0-billsSSH_2.6.3q3 <SP> comment <CR> <LF>
 ///
 /// Using `Version::default()` returns a pattern for this library.
 /// The pattern is: `SSH-2.0-rssh_{CURRENT_PKG_VERSION}`
@@ -47,7 +51,6 @@ impl Version {
             .to_vec()
             .into_iter()
             .filter(|x| *x != 0)
-            // unsure if the lines before the key can be skipped
             .skip(result)
             .collect::<Vec<u8>>();
         Ok(Self { identifier })
@@ -85,7 +88,7 @@ mod tests {
         let v1 = Version::new(String::from("SSH-2.0-rssh_0.1.0")).unwrap();
         let v2 = Version::new(String::from("SSH-2.0-rssh_0.1.0\r")).unwrap();
         let v3 = Version::new(String::from("SSH-2.0-rssh_0.1.0\r\n")).unwrap();
-        assert!(v1 == v2 && v2 == v3);
+        assert!(v1 == v2 && v2 == v3); // v1 == v2 == v3
     }
 
     #[test]
