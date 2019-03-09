@@ -1,11 +1,16 @@
 use crate::misc::Parser;
-use failure::Error;
+use failure::{format_err, Error};
 use std::fs::File;
 use std::io::Read;
 
 pub struct Ed25519Key {
+    pub author: String,
+    pub cipher: String,
+    pub kdf: String,
+    pub key_type: String,
+    pub number_of_keys: u32,
+    pub public: Vec<u8>,
     private: Vec<u8>,
-    public: Vec<u8>,
 }
 
 impl Ed25519Key {
@@ -22,60 +27,60 @@ impl Ed25519Key {
         let private_key = private_key.replace("\n", "");
         let private_key = private_key.trim();
 
-        let decoded = base64::decode(&private_key).unwrap();
-        let end = decoded.iter().position(|&x| x == 0).unwrap();
-        let key_type = ::std::str::from_utf8(&decoded[..end]).unwrap();
-        if key_type != "openssh-key-v1" {
-            panic!();
+        let decoded = base64::decode(&private_key)?;
+
+        let end_key_type = decoded.iter().position(|&x| x == 0).unwrap();
+        let key_type = String::from_utf8(decoded[..end_key_type].to_vec())?;
+
+        let mut parser = Parser::new(&decoded[end_key_type + 1..]);
+        let cipher = parser.read_string().unwrap();
+        let kdf = parser.read_string().unwrap();
+
+        if cipher != "none" {
+            return Err(format_err!("Cipher not supported"));
         }
 
-        let mut parser = Parser::new(&decoded[end + 1..]);
-
-        let cipher_name = parser.read_string().unwrap();
-        let kdf_name = parser.read_string().unwrap();
-
-        if cipher_name != "none" {
-            panic!("Cipher not supperted");
-        }
-
-        if kdf_name != "none" {
-            panic!("KDF not supported");
+        if kdf != "none" {
+            return Err(format_err!("KDF not supported"));
         }
 
         let _ = parser.skip(4);
-        let _ = parser.read_u32().unwrap();
+        let number_of_keys = parser.read_u32()?;
         let _ = parser.skip(4);
+
         let ed25519 = parser.read_string().unwrap();
-
         if ed25519 != "ssh-ed25519" {
-            panic!("Only ssh-ed25519 keys are supported");
+            return Err(format_err!("Only ssh-ed25519 keys are supported"));
         }
 
-        let _ = parser.skip(3);
-        let length_pub = parser.read_u8().unwrap();
-        let _ = parser.skip(length_pub as usize);
-        let _ = parser.skip(3);
-        let _ = parser.skip(9);
-        let _ = parser.skip(3);
-        let _ = parser.skip(12);
-        let _ = parser.skip(3);
-        let _ = parser.skip(1);
+        // we wait for the second public key
+        let _ = parser.skip(4);
         let _ = parser.skip(32);
-        let _ = parser.skip(3);
-        let _ = parser.skip(1);
-        let private = parser.read_length(32).unwrap();
-        let public = parser.read_length(32).unwrap();
 
-        Ok(Ed25519Key { private, public })
-    }
+        let _ = parser.skip(4); // remaining payload
+        let _ = parser.skip(8); // unsure
 
-    #[allow(dead_code)]
-    pub fn private(&self) -> Vec<u8> {
-        self.private.to_vec()
-    }
+        let _ = parser.skip(4); // the key type again
+        let _ = parser.skip(11); // just skip it
 
-    pub fn public(&self) -> Vec<u8> {
-        self.public.to_vec()
+        let _ = parser.skip(4); // unsure
+        let _ = parser.skip(32);
+
+        let _ = parser.skip(4); // length of private and public key
+        let private = parser.read_length(32)?;
+        let public = parser.read_length(32)?;
+
+        let author = parser.read_string()?;
+
+        Ok(Ed25519Key {
+            author,
+            cipher,
+            kdf,
+            number_of_keys,
+            key_type,
+            private,
+            public,
+        })
     }
 
     pub fn signature(&self) -> Vec<u8> {
@@ -86,6 +91,10 @@ impl Ed25519Key {
         result.append(&mut private);
         result.append(&mut public);
         result
+    }
+
+    pub fn public(&self) -> Vec<u8> {
+        self.public.clone()
     }
 }
 
@@ -113,7 +122,7 @@ UoWSg/X10k+iHKWAY1VZAAAAEmxob2x6bmFnZWxAYW5hcmNoeQECAw==
         ];
 
         let ed25519 = Ed25519Key::from_string(String::from(key)).unwrap();
-        assert_eq!(expected_public, ed25519.public());
-        assert_eq!(expected_private, ed25519.private());
+        assert_eq!(expected_public, ed25519.public);
+        assert_eq!(expected_private, ed25519.private);
     }
 }
